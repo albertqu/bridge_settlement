@@ -51,12 +51,12 @@ class ImgCollector:
         self.cam.close()
 
     def uni_capture(self):
-        self.cam.capture(self.name_scheme.format(self.counter), bayer=self._raw)
+        self.cam.capture(self.name_scheme.format(self.counter), self._raw)
         self.counter += 1
 
     def multi_capture(self):
         file_list = [self.name_scheme.format("%d_%d" % (self.counter, i)) for i in range(1, self._num+1)]
-        self.cam.capture_sequence(file_list, bayer=self._raw)
+        self.cam.capture_sequence(file_list, self._raw)
         self.counter += 1
 
 
@@ -83,8 +83,7 @@ def main():
                   "cf: change image format\n" +
                   "cd: change directory\n" +
                   "cn: change name\n" +
-                  "cm: change number of measurement\n" +
-                  "e: end the program")
+                  "cm: change number of measurement\n")
         elif option == 'm':
             ic.capture()
         elif option == 'r':
@@ -99,9 +98,6 @@ def main():
             ic.change_ns(input("Input a name pattern:\n"))
         elif option == 'cm':
             ic.change_num(int(input("Number of image samples for one measurement?\n")))
-        elif option == 'e':
-            ic.shutdown()
-            exit(0)
 
 if __name__ == "__main__":
     main()

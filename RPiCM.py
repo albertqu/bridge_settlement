@@ -167,7 +167,6 @@ def main():
         print("Cycle number: " + str(RUNNING[1]))
 
     print("Little John called it...")
-
     sys.exit(0)
 
 if __name__ == "__main__":
