@@ -1,5 +1,8 @@
 import picamera
 import os
+import time
+
+recur = True
 
 class ImgCollector:
 
@@ -40,8 +43,10 @@ class ImgCollector:
 
     def init_cam(self):
         self.cam = picamera.PiCamera()
+        time.sleep(2)
         self.cam.led = False
         self.cam.iso = 100
+        time.sleep(3)
         if self._num == 1:
             self.capture = self.uni_capture
         else:
@@ -61,11 +66,22 @@ class ImgCollector:
 
 
 def main():
-    directory = input("Input a directory:\n")
-    name_pattern = input("Input a name pattern:\n")
-    pic_format = input("Input a picture format:\n")
-    raw_image = input("Raw image?[y/n]\n") in ['y', 'yes']
-    num_meas = int(input("Number of image samples for one measurement?\n"))
+    prompt = input("Welcome to the RPiCam Module. Type q for quick test or f / [other inputs] for full test.\n")
+    global recur
+    if prompt == 'q':
+        directory = 'quick_test'
+        name_pattern = 'img'
+        pic_format = 'png'
+        raw_image = False
+        num_meas = 1
+        recur = True
+    else:
+        directory = input("Input a directory:\n")
+        name_pattern = input("Input a name pattern:\n")
+        pic_format = input("Input a picture format:\n")
+        raw_image = input("Raw image?[y/n]\n") in ['y', 'yes']
+        num_meas = int(input("Number of image samples for one measurement?\n"))
+        recur = False
 
     while True:
         try:
@@ -75,6 +91,10 @@ def main():
             directory = input("Ill-formated directory, type in another one: ")
 
     while True:
+        if recur:
+            ic.shutdown()
+            break
+
         option = input("Type in an action or h for help:\n")
         if option == 'h':
             print("m: take measurement\n" +
@@ -101,10 +121,11 @@ def main():
             ic.change_num(int(input("Number of image samples for one measurement?\n")))
         elif option == 'e':
             ic.shutdown()
-            exit(0)
+            break
 
 if __name__ == "__main__":
-    main()
+    while recur:
+        main()
 
 
 
