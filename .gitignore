@@ -1,7 +1,16 @@
+# img file
+testpic/
+dataplot/
+*.png
+*.jpeg
+*.jpg
+*.bmp
+*.gif
+
 # IDE file
 .idea/
 
-# markdown
+# Markdown files
 *.md
 
 # Byte-compiled / optimized / DLL files
