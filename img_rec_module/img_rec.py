@@ -117,7 +117,7 @@ def centroid_test(fname, n, trials, func, img_p=identity):
 gray_p = lambda img, r, c: img.item(r, c)
 
 if __name__ == '__main__':
-    centroid_test("../testpic/img_{0}_{1}.png", 25, 3, gray_p, img_p=grayscale)
+    #centroid_test("../testpic/img_{0}_{1}.png", 25, 3, gray_p, img_p=grayscale)
     # centroid_test("../testpic/img_{0}_{1}.png", 25, 3, rel_lumin)
 
     """img = cv2.imread("../testpic/png_1_1.png")
@@ -146,5 +146,5 @@ if __name__ == '__main__':
         min_v = min(range(len(grad)), key=lambda i: grad[i])
         centers.append((max_v + min_v) / 2)"""
 
-    #visualize_data("../testpic/", "../absdataplot/", 10, 'h', rel_lumin, data_p=abs_detect)
+    visualize_data("../testpic/", "../absdataplot/", 10, 'h', rel_lumin, data_p=abs_detect)
 
