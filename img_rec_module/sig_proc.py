@@ -178,7 +178,7 @@ x2 = np.array(range(dimr))
 y2 = np.array([img.item(r, dimc // 2) for r in x2])
 a2, b2, c_s2 = gauss_reg(x2, y2)
 rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
-img = img - rem_gauss
+#img = img - rem_gauss
 cv2.imshow("denoise", img)
 
 blur = cv2.GaussianBlur(img,(5,5),0)
