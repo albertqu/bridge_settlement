@@ -1,0 +1,18 @@
+ksize:(5, 5), sigmax:0
+x: zero_crossing: 219.0300751879699, edge_converge: 216.60606060606062; 
+y: zero_crossing: -1, edge_converge: 231.5486656200942
+ksize:(5, 5), sigmax:1
+x: zero_crossing: 218.97794117647058, edge_converge: 217.825; 
+y: zero_crossing: -1, edge_converge: 231.5472334682861
+ksize:(7, 7), sigmax:0
+x: zero_crossing: 218.89795918367346, edge_converge: 216.62820512820514; 
+y: zero_crossing: -1, edge_converge: 231.55
+ksize:(7, 7), sigmax:1
+x: zero_crossing: 219.03100775193798, edge_converge: 216.60606060606062; 
+y: zero_crossing: -1, edge_converge: 231.5472334682861
+ksize:(9, 9), sigmax:0
+x: zero_crossing: 218.8148148148148, edge_converge: 214.6117886178862; 
+y: zero_crossing: -1, edge_converge: 246.03571428571428
+ksize:(9, 9), sigmax:1
+x: zero_crossing: 219.03100775193798, edge_converge: 216.60606060606062; 
+y: zero_crossing: -1, edge_converge: 231.5472334682861
