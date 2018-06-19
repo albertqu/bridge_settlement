@@ -340,8 +340,15 @@ plt.xlabel("kernel size")
 plt.show()
 
 
-"""This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
-def center_detect(imgs, sample_int=50):
+
+def folder_to_imgs(img_name_scheme, num_sample):
+    """This function takes img files and return cv imgs"""
+    return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample+1)]
+
+
+def center_detect(img_name_scheme, num_sample, sample_int=50):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
+    imgs = folder_to_imgs(img_name_scheme, num_sample)
     xsum = 0
     ysum = 0
     num_imgs = len(imgs)
