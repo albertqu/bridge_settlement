@@ -131,3 +131,4 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
     center_x = -1 if xnum_imgs == 0 else xsum / xnum_imgs
     center_y = -1 if ynum_imgs == 0 else ysum / ynum_imgs
     return center_x, center_y
+
