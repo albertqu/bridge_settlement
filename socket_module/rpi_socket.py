@@ -16,6 +16,8 @@ class SteadySocket:
         self.sock.connect((host, port))
 
     def send(self, data, flags=0):
+        if data.find(self.EOFChar == -1):
+            data += self.EOFChar
         data_sent = 0
         tot_len = len(data)
         while data_sent < tot_len:
@@ -25,6 +27,7 @@ class SteadySocket:
                 data_sent += sent
             except:
                 raise RuntimeError("Connection Lost!")
+
 
     def recv(self):
         data_recv = []
@@ -45,26 +48,30 @@ class SteadySocket:
         self.sock.close()
 
 
+def main():
+    IP = '192.168.3.4'
+    port = 8000
 
-IP = '192.168.3.4'
-port = 8000
-
-rpisock = SteadySocket()
-connected = False
-while True:
-    if not connected:
-        try:
-            rpisock.connect(IP, port)
-            connected = True
+    rpisock = SteadySocket()
+    connected = False
+    while True:
+        if not connected:
+            try:
+                rpisock.connect(IP, port)
+                connected = True
+                msg = input("type a message\n")
+                rpisock.send(bytes(msg, 'utf-8'))
+                data = rpisock.recv()
+                print(data)
+            except:
+                pass
+        else:
+            print("already connected")
             msg = input("type a message\n")
             rpisock.send(bytes(msg, 'utf-8'))
             data = rpisock.recv()
             print(data)
-        except:
-            pass
-    else:
-        print("already connected")
-        msg = input("type a message\n")
-        rpisock.send(bytes(msg, 'utf-8'))
-        data = rpisock.recv()
-        print(data)
+
+
+if __name__ == "__main__":
+    main()

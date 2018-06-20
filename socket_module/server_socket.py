@@ -1,5 +1,4 @@
 import socket
-import time
 
 
 class SteadySocket:
@@ -17,6 +16,8 @@ class SteadySocket:
         self.sock.connect((host, port))
 
     def send(self, data, flags=0):
+        if data.find(self.EOFChar == -1):
+            data += self.EOFChar
         data_sent = 0
         tot_len = len(data)
         while data_sent < tot_len:
@@ -26,6 +27,7 @@ class SteadySocket:
                 data_sent += sent
             except:
                 raise RuntimeError("Connection Lost!")
+
 
     def recv(self):
         data_recv = []
@@ -46,34 +48,38 @@ class SteadySocket:
         self.sock.close()
 
 
-ssock = socket.socket()
-IP = "192.168.3.4"
-port = 8000
-ssock.bind((IP, port))
-print("Now connected to " + IP + ":" + str(port))
-ssock.listen(1)
+def main():
+    ssock = socket.socket()
+    IP = "192.168.3.4"
+    port = 8000
+    ssock.bind((IP, port))
+    print("Now connected to " + IP + ":" + str(port))
+    ssock.listen(1)
 
-conn = None
-addr = None
-sconn = None
-while True:
-    if conn is None:
-        conn, addr = ssock.accept()
-        sconn = SteadySocket(conn)
-        print(addr)
-    else:
-        data = sconn.recv()
-        if data:
-            print(data)
-        if data == b"hi":
-            sconn.send(b"how are you!")
-        elif data == b'c':
-            sconn.close()
-            break
+    conn = None
+    addr = None
+    sconn = None
+    while True:
+        if conn is None:
+            conn, addr = ssock.accept()
+            sconn = SteadySocket(conn)
+            print(addr)
         else:
-            sconn.send(b"It's good huh?!")
-        inp = input("value?\n")
-        if inp == 'e':
-            sconn.close()
-            break
+            data = sconn.recv()
+            if data:
+                print(data)
+            if data == b"hi":
+                sconn.send(b"how are you!")
+            elif data == b'c':
+                sconn.close()
+                break
+            else:
+                sconn.send(b"It's good huh?!")
+            inp = input("value?\n")
+            if inp == 'e':
+                sconn.close()
+                break
 
+
+if __name__ == "__main__":
+    main()
