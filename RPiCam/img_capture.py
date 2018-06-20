@@ -21,7 +21,10 @@ class ImgCollector:
         if serialize:
             if os.path.exists("img_log.txt"):
                 rfile = open("img_log.txt", "r")
-                self.counter = int(rfile.read())
+                try:
+                    self.counter = int(rfile.read())
+                except:
+                    self.counter = 1
             else:
                 rfile = open("img_log.txt", "w")
                 self.counter = 1
@@ -59,6 +62,12 @@ class ImgCollector:
             self.capture = self.uni_capture
         else:
             self.capture = self.multi_capture
+
+    def get_last_meas(self):
+        if self._num == 1:
+            return self.name_scheme.format(self.counter - 1)
+        else:
+            return self._dir + self._ns + '_%d_{0}.' % (self.counter - 1) + self._form
 
     def shutdown(self):
         self.cam.close()
