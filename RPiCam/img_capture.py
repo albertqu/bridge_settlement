@@ -2,11 +2,9 @@ import picamera
 import os
 import time
 
-recur = True
-
 class ImgCollector:
 
-    def __init__(self, dir='', ns='img', form='png', raw=False, num=1):
+    def __init__(self, dir='', ns='img', form='png', raw=False, num=1, serialize=True):
         if dir:
             if not os.path.exists(dir):
                 os.mkdir(dir)
@@ -19,8 +17,18 @@ class ImgCollector:
         self._form = form
         self._raw = raw
         self._num = num
-        self.counter = 1
         self.init_cam()
+        if serialize:
+            if os.path.exists("img_log.txt"):
+                rfile = open("img_log.txt", "r")
+                self.counter = int(rfile.read())
+            else:
+                rfile = open("img_log.txt", "w")
+                self.counter = 1
+            rfile.close()
+        else:
+            self.counter = 1
+
 
     def change_ns(self, ns):
         self._ns = ns
@@ -54,6 +62,9 @@ class ImgCollector:
 
     def shutdown(self):
         self.cam.close()
+        wfile = open("img_log.txt", "w")
+        wfile.write(str(self.counter))
+        wfile.close()
 
     def uni_capture(self):
         self.cam.capture(self.name_scheme.format(self.counter), bayer=self._raw)
@@ -124,6 +135,7 @@ def main():
             break
 
 if __name__ == "__main__":
+    recur = True
     while recur:
         main()
 
