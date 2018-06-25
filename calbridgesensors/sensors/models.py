@@ -1,13 +1,23 @@
 from django.db import models
-
+import re
 
 
 class Bridge(models.Model):
-
     name = models.CharField(max_length=40, primary_key=True)
-    reading = models.OneToOneField(Reading, on_delete=models.PROTECT, help_text="latest sensor reading of the bridge", blank=True, null=True)
-    anomaly = models.BooleanField(default=False)
-    broken_times = models.ForeignKey(BridgeLog, on_delete=models.PROTECT)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        target = r'[^ A-Za-z0-9]'
+        self.name = str(re.sub(target, " ", self.name)).title()
+
+    def __str__(self):
+        return self.name
+
+    def latest_reading(self):
+        return self.reading_set.all()[0]
+
+    def get_damage_records(self):
+        return self.bridgelog_set.filter(log_type="D")
 
     class Meta:
         ordering = ["name"]
@@ -23,8 +33,12 @@ class Reading(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return "Reading for " + self.bridge.name
+
     class Meta:
-        verbose_name = "Bridge sensor reading"
+        verbose_name = "Bridge Sensor Reading"
+        ordering = ["bridge__name", "-time_taken"]
 
 
 class BridgeLog(models.Model):
@@ -36,6 +50,13 @@ class BridgeLog(models.Model):
     log_time = models.DateTimeField(auto_now_add=True, primary_key=True)
     bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="log_time")
 
+    class Meta:
+        ordering = ["-log_time", "log_type", "bridge__name"]
 
-class BrokenRecord(models.Model):
-     bridge = models.OneToOneField(Bridge, on_delete=models.SET_NULL, to_field="name")
+
+class BrokenFlag(models.Model):
+    bridge = models.OneToOneField(Bridge, on_delete=models.CASCADE)
+    record = models.OneToOneField(BridgeLog, on_delete=models.PROTECT)
+
+    class Meta:
+        ordering = ["bridge__name"]

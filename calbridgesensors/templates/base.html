@@ -4,19 +4,70 @@
     <meta charset="UTF-8">
     <title>Cal Bridge Sensors</title>
     <style>
-        #alert{
+        #alert {
             color: crimson;
             font-family: Arial, sans-serif, Georgia, Helvetica;
         }
+
+        div.header {
+            display: block;
+            width: 100%;
+            color: blue;
+            margin-right: 5px;
+        }
+
+        div li.right {
+            float: right;
+            border-left: 1px solid darkgrey;
+            padding: 5px 10px;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        /* ----  href clickons --- */
+        a.button:link {
+            text-decoration: none;
+        }
+
+        a.button:visited {
+            text-decoration: none;
+        }
+
+        a.button:active {
+            text-decoration: underline;
+        }
+
+        a.button:hover {
+            text-decoration: underline;
+        }
+
+        li.right a.button:hover {
+            color: dodgerblue;
+        }
+
+        li.right a.button:active {
+            color: dodgerblue;
+        }
+
+
+
     </style>
 </head>
 <body>
+    <!---{% block header %}-->
+        <div class="header">
+            <li class="right"><a class="button" href="">logout</a></li>
+            <li class="right"><a class="button" href="">home</a></li>
+        </div>
+    <!---{% endblock %}
     {% block alert %}
         <div id="alert">
         </div>
     {% endblock %}
 
     {% block content %}
-    {% endblock %}
+    {% endblock %}--->
 </body>
 </html>

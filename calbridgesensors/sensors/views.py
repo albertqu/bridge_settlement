@@ -1,14 +1,24 @@
 from django.shortcuts import render
-from django.views.generic import TemplateView
+from django.views.generic import DetailView
+from django.http import HttpResponse
+from django.views.generic.base import TemplateView
+from .models import Bridge, BrokenFlag
 
 
 """View for home page"""
-def home(request):
+class SensorsHomeView(TemplateView):
+    template_name = "sensors/index.html"
 
-    # Check broken bridges
-    return render(request, "home.html", context={})
+    def get_context_data(self, **kwargs):
+        broken_bridges = BrokenFlag.objects.all()
 
 
-class BridgeView(TemplateView):
 
-    template_name = "bridge.html"
+
+class BridgeView(DetailView):
+    model = Bridge
+    template_name = "sensors/detail.html"
+
+
+def bridge_update(request, bridge_name):
+    return HttpResponse("hello")
