@@ -1,5 +1,5 @@
 class BridgeNameConverter:
-    regex = '[/w-]+'
+    regex = '[\w-]+'
 
     def to_python(self, value):
         return value.replace("-", " ").title()

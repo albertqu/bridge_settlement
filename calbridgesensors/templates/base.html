@@ -51,23 +51,42 @@
             color: dodgerblue;
         }
 
+        div.center {
+            text-align: center;
+            margin-top: 5%;
+            margin-bottom: auto;
+            border-top: 1px solid slategray;
+            display: flex;
+            justify-content: center;
+        }
 
+        div.center label {
+            padding-right: 20px;
+            margin-top: 10px;
+        }
+
+        div.center select {
+            margin-top: 10px;
+        }
 
     </style>
 </head>
 <body>
-    <!---{% block header %}-->
+    {% block header %}
         <div class="header">
-            <li class="right"><a class="button" href="">logout</a></li>
-            <li class="right"><a class="button" href="">home</a></li>
-        </div>
-    <!---{% endblock %}
-    {% block alert %}
-        <div id="alert">
+            {% if user.is_authenticated %}
+                <li class="right"><a class="button" href={% url "logout" %}>logout</a></li>
+            {% endif %}
+            <li class="right"><a class="button" href="{% url "home" %}">home</a></li>
         </div>
     {% endblock %}
 
+
+    {% block alert %}
+    {% endblock %}
+
+
     {% block content %}
-    {% endblock %}--->
+    {% endblock %}
 </body>
 </html>

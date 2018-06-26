@@ -1,14 +1,18 @@
 from django.db import models
-import re
+from .utils import name_validate
+from django.utils import timezone
 
 
 class Bridge(models.Model):
+    # Field: reading
     name = models.CharField(max_length=40, primary_key=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        target = r'[^ A-Za-z0-9]'
-        self.name = str(re.sub(target, " ", self.name)).title()
+        self.name = name_validate(self.name)
 
     def __str__(self):
         return self.name
@@ -19,8 +23,22 @@ class Bridge(models.Model):
     def get_damage_records(self):
         return self.bridgelog_set.filter(log_type="D")
 
-    class Meta:
-        ordering = ["name"]
+    def get_repair_records(self):
+        return self.bridgelog_set.filter(log_type="R")
+
+    def is_broken(self):
+        return self.brokenflag
+
+    def add_reading(self, x, y, z, theta, phi, psi):
+        return self.reading_set.create(x=x, y=y, z=z, theta=theta, phi=phi, psi=psi, bridge=self)
+
+    def update(self, x, y, z, theta, phi, psi):
+        old_reading = self.latest_reading()
+        new_reading = self.add_reading(x, y, z, theta, phi, psi)
+
+
+    def mark_broken(self, bridge_log):
+        self.brokenflag = BrokenFlag(bridge=self, first_broken_record=bridge_log)
 
 
 class Reading(models.Model):
@@ -33,12 +51,12 @@ class Reading(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return "Reading for " + self.bridge.name
-
     class Meta:
         verbose_name = "Bridge Sensor Reading"
         ordering = ["bridge__name", "-time_taken"]
+
+    def __str__(self):
+        return "Reading for " + self.bridge.name
 
 
 class BridgeLog(models.Model):
@@ -51,12 +69,21 @@ class BridgeLog(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="log_time")
 
     class Meta:
-        ordering = ["-log_time", "log_type", "bridge__name"]
+        ordering = ["bridge__name", "log_type", "-log_time"]
+
+    def __str__(self):
+        return self.get_log_type_display() + " for " + self.bridge.name
+
+    def description(self):
+        return self.get_log_type_display() + " at " + self.log_time
 
 
 class BrokenFlag(models.Model):
     bridge = models.OneToOneField(Bridge, on_delete=models.CASCADE)
-    record = models.OneToOneField(BridgeLog, on_delete=models.PROTECT)
+    first_broken_record = models.OneToOneField(BridgeLog, on_delete=models.PROTECT)
 
     class Meta:
         ordering = ["bridge__name"]
+
+    def broken_time(self):
+        return timezone.now() - self.first_broken_record.log_time

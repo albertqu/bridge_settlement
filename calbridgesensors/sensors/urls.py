@@ -4,8 +4,11 @@ from . import views
 
 register_converter(BridgeNameConverter, 'brn')
 
+app_name = "sensors"
+
 urlpatterns = [
-    path("", views.SensorsHomeView, "sensors"),
-    path("<brn:pk>/", views.BridgeView.as_view(), "detail"),
-    path("<brn:pk>/update/", views.bridge_update)
+    path('', views.SensorsHomeView.as_view(), name='index'),
+    path('<brn:pk>/', views.BridgeView.as_view(), name='detail'),
+    #re_path(r'^(?P<pk>[\w-]+)/$', views.BridgeView.as_view(), name='detail'),
+    path('<brn:pk>/update/', views.bridge_update)
 ]
