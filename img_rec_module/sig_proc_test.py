@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from img_rec_module import img_rec
 from random import randint
 import os
+from math import atan, sqrt
 
 
 def gauss_data_matrix(data):
@@ -75,6 +76,8 @@ def improvedCost(x, y, x_test, y_test, start, end):
 
 
 def OMP(imDims, sparsity, measurements, A):
+    display = None
+    numPixels = 0
     r = measurements.copy()
     indices = []
 
@@ -177,6 +180,7 @@ def max_min(data):
             min_ind = i
     return max_ind, min_ind
 
+
 def zero_crossing(data):
     maxi, mini = max_min(data)
     cross = -1
@@ -224,101 +228,78 @@ def edge_converge(data):
             cmin += 1
     return -1 if (emax == -1 or emin == -1) else (emax + emin) / 2
 
-def test():
 
-    imgn = "img_20_3"
-    fwrite = open(imgn+"_meas.txt", "w")
+def extract_extrema(data):
+    len_data = len(data)
+    mean = sum(data) / len_data
+    std_dev = 0
+    for x in data:
+        std_dev += (x - mean) ** 2
+    std_dev = sqrt(std_dev / len_data)
+    signifmax = []
+    signifmin = []
+    coeff = 3
+    for i, x in enumerate(data):
+        diff = (x - mean) / std_dev
+        if diff >= coeff:
+            signifmax.append(i)
+        elif diff <= -coeff:
+            signifmin.append(i)
+    return signifmax, signifmin
+
+
+def test():
+    # SETTINGS
+    imgn = "img_19_3"
+    IMGDIR = "../testpic/"
+    ROOTMEAS = "meas/"
+    SAVEDIR = ROOTMEAS+imgn + "/"
+    imgr = cv2.imread(IMGDIR + imgn + ".png")
+    dimc = imgr.shape[1]
+    dimr = imgr.shape[0]
+    r_int = dimr // 2
+    c_int = dimc // 2
+    end = 20
+    sig = 0
+    ins = range(5, end, 2)
+    name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
+    NAME_HEADER = SAVEDIR + name_scheme
+    if not os.path.exists(SAVEDIR):
+        os.mkdir(SAVEDIR)
+    fwrite = open(NAME_HEADER + ".txt", "w")
+    plot_save = NAME_HEADER + ".png"
+
+
+    # INITIALIZATION
     cenvalsx = []
     cenvalsy = []
     edgvalsx = []
     edgvalsy = []
-    ins = range(5, 20, 2)
-    end = 15
-    ins_e = range(5, end, 2)
-    imgr = cv2.imread("../testpic/" + imgn + ".png")
-    cv2.imshow("true", imgr)
-    dimc = imgr.shape[1]
-    dimr = imgr.shape[0]
+    cv2.imshow("true", imgr)                                 # REMOVES TO SHOW IMAGE
     x = np.array(range(dimc))
     x2 = np.array(range(dimr))
+
     for i in ins:
-        sig = 0
-        #img = cv2.imread("../testpic/" + imgn + ".png")
-        #cv2.imshow("true", img)
-        """img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        x = np.array(range(dimc))
+        # INITIALIZATION
+        gksize = (i, i)
+        sigmaX = sig
+        blur = cv2.GaussianBlur(imgr,gksize,sigmaX)
+        #cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
+        img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+
+        # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
+        """x = np.array(range(dimc))
         #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
         y = np.array([img.item(dimr // 2, c) for c in x])
         a1, b1, c_s1 = gauss_reg(x, y)
-        
+
         x2 = np.array(range(dimr))
         y2 = np.array([img.item(r, dimc // 2) for r in x2])
         a2, b2, c_s2 = gauss_reg(x2, y2)
         rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
-        #img = img - rem_gauss
-        cv2.imshow("denoise", img)"""
-
-        gksize = (i, i)
-        sigmaX = sig
-
-        blur = cv2.GaussianBlur(imgr,gksize,sigmaX)
-        #cv2.imshow("ok", blur)
-        img = blur
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        kernel = np.array([[-1, -1, -1],
-                           [-1, 8, -1],
-                           [-1, -1, -1]])
-        kerneled = cv2.filter2D(img, -1, kernel)
-        #cv2.imshow("kerneled", kerneled)
-
-
-
-        laplacian = cv2.Laplacian(img,cv2.CV_64F)
-        sobelx = cv2.Sobel(img,cv2.CV_64F,1,0,ksize=-1)
-        sobely = cv2.Sobel(img,cv2.CV_64F,0,1,ksize=-1)
-        """plt.subplot(2,2,1),plt.imshow(img,cmap = 'gray')
-        plt.title('Original'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,2),plt.imshow(laplacian,cmap = 'gray')
-        plt.title('Laplacian'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,3),plt.imshow(sobelx,cmap = 'gray')
-        plt.title('Sobel X'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,4),plt.imshow(sobely,cmap = 'gray')
-        plt.title('Sobel Y'), plt.xticks([]), plt.yticks([])
-        plt.close()"""
-        #plt.show()
-
-        y_s_x = np.array([sobelx.item(dimr // 2, c) for c in x])
-        y_s_y = np.array([sobely.item(r, dimc // 2) for r in x2])
-        fname = "ksize:{0}, sigmax:{1}".format(gksize, sigmaX)
-        fwrite.write(fname)
-        fwrite.write('\n')
-        zx = zero_crossing(y_s_x)
-        cenvalsx.append(zx)
-        if i < end:
-            ex = edge_converge(y_s_x)
-            edgvalsx.append(ex)
-        zy = zero_crossing(y_s_y)
-        cenvalsy.append(zy)
-        if i < end:
-            ey = edge_converge(y_s_y)
-            edgvalsy.append(ey)
-        fwrite.write("x: zero_crossing: {0}, edge_converge: {1}; ".format(zx, ex))
-        fwrite.write('\n')
-        fwrite.write("y: zero_crossing: {0}, edge_converge: {1}\n".format(zy, ey))
-        fig = plt.figure(figsize=(16, 8))
-        fig.canvas.set_window_title(fname)
-        plt.subplot(211)
-        plt.plot(y_s_x, 'b-')
-        plt.ylabel("sobel_x")
-        plt.subplot(212)
-        plt.plot(y_s_y, 'b-')
-        plt.ylabel("sobel_y")
-        #plt.show()
-        plt.savefig(fname + ".png")
-
-
-        """y_hat = gauss_hat(x, a1, b1, c_s1)
+        img = img - rem_gauss
+        cv2.imshow("denoise", img)
+        y_hat = gauss_hat(x, a1, b1, c_s1)
         plt.figure(figsize=(16, 8))
         plt.plot(x, y, 'b-', x, y_hat, 'r-')
         plt.show()
@@ -327,26 +308,98 @@ def test():
         plt.plot(x, y-y_hat, 'b-')
         plt.show()"""
 
+        # IMAGE PROCESSING
+        sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
+        sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
+        """kernel = np.array([[-1, -1, -1],
+                           [-1, 8, -1],
+                           [-1, -1, -1]])
+        kerneled = cv2.filter2D(img, -1, kernel)
+        cv2.imshow("kerneled", kerneled)"""                 # KERNEL EXPERIMENT
+        #laplacian = cv2.Laplacian(img,cv2.CV_64F)          # LAPLACIAN FILTERING
+        plt.subplot(2,2,1),plt.imshow(cv2.cvtColor(imgr, cv2.COLOR_BGR2GRAY),cmap = 'gray')
+        plt.title('Original'), plt.xticks([]), plt.yticks([])
+        plt.subplot(2,2,2),plt.imshow(img,cmap = 'gray')
+        plt.title('Gaussian Filter'), plt.xticks([]), plt.yticks([])
+        plt.subplot(2,2,3),plt.imshow(sobelx,cmap = 'gray')
+        plt.title('Scharr X'), plt.xticks([]), plt.yticks([])
+        plt.subplot(2,2,4),plt.imshow(sobely,cmap = 'gray')
+        plt.title('Scharr Y'), plt.xticks([]), plt.yticks([])
+        plt.savefig(NAME_HEADER + "_filters.png")
+        plt.close()                                         # REMOVES TO SHOW CONTRAST OF FILTERS
 
 
-    plt.figure(figsize=(16, 8))
+        # DETECTION INIT
+        gk_setting = "ksize:{0}, sigmax:{1}".format(gksize, sigmaX)
+        print(gk_setting)
+        y_s_x = np.array([sobelx.item(r_int, c) for c in x])
+        y_s_y = np.array([sobely.item(r, c_int) for r in x2])
+        print(extract_extrema(y_s_x))
+        print(extract_extrema(y_s_y))
+        fwrite.write(gk_setting)
+        fwrite.write('\n')
+
+        # EDGE DETECTION
+        zx = zero_crossing(y_s_x)
+        cenvalsx.append(zx)
+        ex = edge_converge(y_s_x)
+        edgvalsx.append(ex)
+        zy = zero_crossing(y_s_y)
+        cenvalsy.append(zy)
+        ey = edge_converge(y_s_y)
+        edgvalsy.append(ey)
+
+        # DATA RECORDING
+        fwrite.write("x: zero_crossing: {0}, edge_converge: {1}; ".format(zx, ex))
+        fwrite.write('\n')
+        fwrite.write("y: zero_crossing: {0}, edge_converge: {1}\n".format(zy, ey))
+
+        # GK_PLOT
+        if i == 9:
+            fig = plt.figure(figsize=(16, 8))
+            fig.canvas.set_window_title(gk_setting)
+            plt.subplot(211)
+            plt.plot(y_s_x, 'b-')
+            plt.ylabel("sobel_x")
+            plt.subplot(212)
+            plt.plot(y_s_y, 'b-')
+            plt.ylabel("sobel_y")
+            plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")
+
+        if i >= 13:
+            fig = plt.figure(figsize=(16, 8))
+            fig.canvas.set_window_title(gk_setting)
+            plt.subplot(211)
+            plt.plot(y_s_x, 'b-')
+            plt.ylabel("sobel_x")
+            plt.subplot(212)
+            plt.plot(y_s_y, 'b-')
+            plt.ylabel("sobel_y")
+            plt.show()
+        # plt.savefig(NAME_HEADER + "_" + gk_setting + ".png") # UNCOMMENT WHEN SAVING PLOTS
+
+
+    fig = plt.figure(figsize=(16, 8))
     plt.subplot(2, 1, 1)
-    plt.plot(ins, cenvalsx, 'b-', ins_e, edgvalsx, 'r-')
+    plt.plot(ins, cenvalsx, 'b-', ins, edgvalsx, 'r-')
     plt.legend(['zero crossing', 'edge_converging'], loc="lower left")
     plt.ylabel("x_meas")
     plt.subplot(2, 1, 2)
-    plt.plot(ins, cenvalsy, 'b-', ins_e, edgvalsy, 'r-')
+    plt.plot(ins, cenvalsy, 'b-', ins, edgvalsy, 'r-')
     plt.legend(['zero crossing', 'edge_converging'], loc="lower left")
     plt.ylabel("y_meas")
     plt.xlabel("kernel size")
     plt.show()
+    fig.savefig(plot_save)
+    #plt.savefig(plot_save)
 
 
 def folder_to_imgs(img_name_scheme, num_sample):
     """This function takes img files and return cv imgs"""
     return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample+1)]
 
-gk = 7
+gk = 9
+
 
 def center_detect(img_name_scheme, num_sample, sample_int=50):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
@@ -358,10 +411,11 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
     ynum_imgs = num_imgs
     xsum = 0
     ysum = 0
-    zw = 0.5
-    ew = 0.5
+    zw = 1
+    ew = 0
     for imgr in imgs:
         #cv2.imshow("w", imgr)
+        #print(imgr.shape)
         # Image Processing
         gksize = (gk, gk)
         sigmaX = 0
@@ -373,12 +427,15 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
         nr = sample_int
         r_thresh = dimr * 2.0 / (sample_int * 3)
         xs = []
+        xdummies = []
         ys = []
+        ydummies = []
         while nr < dimr:
             data_x = sobelx[nr, :]
             zc_x = zero_crossing(data_x)
             ed_x = edge_converge(data_x)
             nr += sample_int
+            xdummies.append(zc_x * zw + ed_x * ew)
             if zc_x == -1:
                 continue
             else:
@@ -390,30 +447,50 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
             zc_y = zero_crossing(data_y)
             ed_y = edge_converge(data_y)
             nc += sample_int
+            ydummies.append(zc_y * zw + ed_y * ew)
             if zc_y == -1:
                 continue
             else:
                 ys.append(zc_y * zw + ed_y * ew)
 
+
+        #print("x")
+        #print(xdummies)
+        #print(xs)
+        #print("y")
+        #print(ydummies)
+        #print(ys)
         len_xs = len(xs)
         len_ys = len(ys)
         if len_xs < r_thresh:
             xnum_imgs -= 1
         else:
             xsum += sum(xs) / len(xs)
-            #print(xs)
         if len_ys < c_thresh:
             ynum_imgs -= 1
         else:
             ysum += sum(ys) / len(ys)
-            #print(ys)
 
     center_x = -1 if xnum_imgs == 0 else xsum / xnum_imgs
     center_y = -1 if ynum_imgs == 0 else ysum / ynum_imgs
     return center_x, center_y
 
-for i in range(1, 26):
-    print(center_detect("../testpic/img_" + str(i) +"_{0}.png", 3))
+print("Center Detection yields: ")
+print(center_detect("../testpic/img_19_{0}.png", 3))
+
+
 """plt.figure()
 plt.plot([1,2 ,3])
 plt.show()"""
+
+#print(atan(56 / 200) * 180 / 3.1415926535)
+#print(atan(134 / 537) * 180 / 3.1415926535)
+
+test()
+
+# INSIGHT:
+"""Might be able to solve the problem by auto-thresholding and converting to binary.
+Alternative:
+    1. Mark the maximum and minimum that are certain multitudes of standard deviation above
+
+"""

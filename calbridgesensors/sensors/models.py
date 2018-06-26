@@ -36,7 +36,6 @@ class Bridge(models.Model):
         old_reading = self.latest_reading()
         new_reading = self.add_reading(x, y, z, theta, phi, psi)
 
-
     def mark_broken(self, bridge_log):
         self.brokenflag = BrokenFlag(bridge=self, first_broken_record=bridge_log)
 

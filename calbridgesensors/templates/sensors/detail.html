@@ -1,2 +1,58 @@
 {% extends 'base.html' %}
 
+{% block content %}
+    <ul class="bar">
+        <li class="setview">Bridge Name</li>
+        <li class="setview">Bridge reading x</li>
+        <li class="setview">Bridge reading y</li>
+        <li class="setview">Broken Record</li>
+        <li class="setview">Repair Record</li>
+    </ul>
+    <br />
+    <ul class="bar">
+        <li class="setview">{{ bridge.name }}</li>
+        {% if reading %}
+        <li class="setview">{{ reading.x }}</li>
+        <li class="setview">{{ reading.y }}</li>
+        {% else %}
+        <li class="setview">{{ 0.0 }}</li>
+        <li class="setview">{{ 0.0 }}</li>
+        {% endif %}
+
+        {% if damage_recs %}
+            <div class="dropdown">
+            {% for rec in damage_recs %}
+                {% if forloop.first %}
+                    <button class="setview dropbtn">{{ rec.log_time }}</button>
+                    <div class="dropmenu">
+                {% elif forloop.last %}
+                    <li class="dropitem">{{ rec.log_time }}</li>
+                    </div>
+                {% else %}
+                    <li class="dropitem">{{ rec.log_time }}</li>
+                {% endif %}
+            {% endfor %}
+            </div>
+        {% else %}
+            <li class="setview">No Damages</li>
+        {% endif %}
+
+        {% if repair_recs %}
+            <div class="dropdown">
+            {% for rec in repair_recs %}
+                {% if forloop.first %}
+                    <button class="setview dropbtn">{{ rec.log_time }}</button>
+                    <div class="dropmenu">
+                {% elif forloop.last %}
+                    <li class="dropitem">{{ rec.log_time }}</li>
+                    </div>
+                {% else %}
+                    <li class="dropitem">{{ rec.log_time }}</li>
+                {% endif %}
+            {% endfor %}
+            </div>
+        {% else %}
+            <li class="setview">No Repairs</li>
+        {% endif %}
+    </ul>
+{% endblock %}
