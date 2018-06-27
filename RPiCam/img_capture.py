@@ -53,7 +53,7 @@ class ImgCollector:
             self.capture = self.multi_capture
 
     def init_cam(self):
-        self.cam = picamera.PiCamera()
+        self.cam = picamera.PiCamera(resolution=(1920, 1200))
         time.sleep(2)
         self.cam.led = False
         self.cam.iso = 100

@@ -5,6 +5,8 @@ from django.views.generic import DetailView
 from django.http import HttpResponse
 from django.views.generic.base import TemplateView
 from .models import Bridge, BrokenFlag
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 
 class SensorsHomeView(LoginRequiredMixin, TemplateView):
@@ -30,6 +32,7 @@ class SensorsHomeView(LoginRequiredMixin, TemplateView):
 @login_required(login_url='/accounts/login/')
 def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
+    print(request.COOKIES)
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),
@@ -38,6 +41,28 @@ def bridge_view(request, pk):
                }
     return render(request, "sensors/detail.html", context=context)
 
+def bridge_update(request, pk):
+    """JSON"""
+    x, y, z, pw = get_json(request)
+    #x, y, z, pw = get_form(request)
+    print("COOKIES: ")
+    print(request.COOKIES)
+    print("json")
+    print(x)
+    print(y)
+    print(z)
+    print(pw)
 
-def bridge_update(request, bridge_name):
     return HttpResponse("hello")
+
+
+def get_json(request):
+    if request.body:
+        data = json.loads(request.body)
+        return data['x'], data['y'], data['z'], data['pw']
+    else:
+        return -1, -1, -1, ""
+
+
+def get_form(request):
+    return request.POST['x'], request.POST['y'], request.POST['z'], request.POST['pw']
