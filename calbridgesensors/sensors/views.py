@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import DetailView
 from django.http import HttpResponse
 from django.views.generic.base import TemplateView
-from .models import Bridge, BrokenFlag
-from django.views.decorators.csrf import csrf_exempt
+from .models import Bridge, BrokenFlag, Reading
+from .utils import verify_request
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 import json
 
 
@@ -32,7 +33,6 @@ class SensorsHomeView(LoginRequiredMixin, TemplateView):
 @login_required(login_url='/accounts/login/')
 def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
-    print(request.COOKIES)
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),
@@ -41,28 +41,34 @@ def bridge_view(request, pk):
                }
     return render(request, "sensors/detail.html", context=context)
 
+
+@csrf_exempt
 def bridge_update(request, pk):
     """JSON"""
-    x, y, z, pw = get_json(request)
-    #x, y, z, pw = get_form(request)
-    print("COOKIES: ")
-    print(request.COOKIES)
-    print("json")
-    print(x)
-    print(y)
-    print(z)
-    print(pw)
+    def update_procedure():
+        # Connects the front-end request with backend database process
+        try:
+            br = Bridge.objects.get(pk=pk)
+        except Bridge.DoesNotExist:
+            return HttpResponse(content='Bridge Unregistered', status=412)
+        br.update(request.POST)  # Should resolve all sorts of issues by passing a dictionary in
+        return HttpResponse('BONJOUR')
 
-    return HttpResponse("hello")
+    @csrf_protect
+    def protected_update(r, p):
+        return update_procedure()
 
-
-def get_json(request):
-    if request.body:
-        data = json.loads(request.body)
-        return data['x'], data['y'], data['z'], data['pw']
+    if verify_request(request.COOKIES):
+        return update_procedure()
     else:
-        return -1, -1, -1, ""
+        return protected_update(request, pk)
 
 
-def get_form(request):
-    return request.POST['x'], request.POST['y'], request.POST['z'], request.POST['pw']
+
+
+
+
+
+
+
+

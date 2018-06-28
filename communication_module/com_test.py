@@ -15,6 +15,7 @@ def send_data_to_server(x=0.0, y=0.0, z=0.0, theta=0.0, phi=0.0, psi=0.0):
     dt = datetime.now()
     cookies = {'csrftoken': encode(dt), 'time': str(dt)}
     r = requests.post(dest, data=payload, cookies=cookies)
+    print(r.status_code)
     if r.status_code == 403:
         raise RuntimeWarning("CSRF ALERT ON, INSPECT YOUR SYSTEM")
     else:
@@ -27,3 +28,8 @@ def encode(time_sign):
              * time_sign.second) % len_pw
     repl = chr(randint(97, 122))
     return PASSWORD[:index] + repl + PASSWORD[index+1:]
+
+
+print(send_data_to_server(0.1, 1.0, 2.0))
+#send_data_form(1.0, 2.0, 3.0)
+#cookies = {'csrftoken': "djioewfj34jod2jdoi3jr0jl983jsa", 'TIME': datetime.now()}
