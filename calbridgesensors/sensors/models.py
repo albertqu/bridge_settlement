@@ -70,7 +70,7 @@ class Bridge(models.Model):
         self.brokenflag.delete()
 
     def mark_broken(self, damage_rec):
-        BrokenFlag.objects.create(bridge=self, broken_record=damage_rec)
+        BrokenFlag.objects.create(bridge=self, damage_record=damage_rec)
 
 
 class Reading(models.Model):

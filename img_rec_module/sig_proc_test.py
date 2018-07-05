@@ -248,10 +248,201 @@ def extract_extrema(data):
     return signifmax, signifmin
 
 
+def min_max(data, max, min):
+    g_diff = max - min
+    return [d / g_diff for d in data]
+
+
+def round_up(num):
+    down = int(num)
+    if num - down > 0:
+        return num + 1
+    else:
+        return num
+
+
+def compare_images(*args):
+    # Takes in a sequence of IMG(Gray) and TITLE pairs and plot them side by side
+    graph_amount = len(args)
+    row = int(sqrt(graph_amount))
+    col = round_up(float(graph_amount) / row)
+    plt.figure(figsize=(16, 8))
+    for i, pair in enumerate(args):
+        plt.subplot(row, col, i+1)
+        plt.imshow(pair[0], cmap='gray')
+        plt.title(pair[1]), plt.xticks([]), plt.yticks([])
+    plt.show()
+
+
+def sobel_process(imgr, gks, sig):
+    gksize = (gks, gks)
+    sigmaX = sig
+    blur = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    # cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
+    if len(imgr.shape) == 3:
+        img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+    else:
+        img = blur
+    # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
+    """x = np.array(range(dimc))
+    #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
+    y = np.array([img.item(dimr // 2, c) for c in x])
+    a1, b1, c_s1 = gauss_reg(x, y)
+
+    x2 = np.array(range(dimr))
+    y2 = np.array([img.item(r, dimc // 2) for r in x2])
+    a2, b2, c_s2 = gauss_reg(x2, y2)
+    rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
+    img = img - rem_gauss
+    cv2.imshow("denoise", img)
+    y_hat = gauss_hat(x, a1, b1, c_s1)
+    plt.figure(figsize=(16, 8))
+    plt.plot(x, y, 'b-', x, y_hat, 'r-')
+    plt.show()
+    plt.close()
+    plt.figure(figsize=(16,8))
+    plt.plot(x, y-y_hat, 'b-')
+    plt.show()"""
+
+    # IMAGE PROCESSING
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
+    return img, sobelx, sobely
+
+
+def test_canny_detect():
+    imgn = "img_3_{0}.png"
+    IMGDIR = "../new_test/"
+    NAME = IMGDIR + imgn
+
+    denoised, original = test_noise_reduce(NAME)
+    NL_denoised = cv2.fastNlMeansDenoising(original)
+    bdenoise = test_blur_then_nr(NAME)
+
+    dblur, sobelx, sobely = sobel_process(denoised, 9, 0)
+    nldblur = sobel_process(NL_denoised, 9, 0)[0]
+    pblur, sobelx, sobely = sobel_process(original, 9, 0)
+
+    de_edges = canny_detect(denoised)
+    db_edges = canny_detect(dblur)
+    nld_edges = canny_detect(nldblur)
+    blur_denoise = canny_detect(bdenoise)
+    blur_edges = canny_detect(pblur)
+    edge_detect_expr(db_edges, original)
+    """compare_images((imgr, 'Original'), (edges, 'Canny Edge'),
+                   (sobelx, 'Sobel X'), (sobely, 'Sobel Y'))"""
+    compare_images((original, 'Original'), (NL_denoised, "NLMEANS"), (de_edges, 'DENOISE Edges'), (blur_edges, 'Plain Blur Edges'),
+                   (denoised, 'Denoised'), (nld_edges, 'NIDE-BLUR Edges'), (db_edges, 'DE-BLUR Edges'), (blur_denoise, "BDENOISE Edges"))
+
+
+def canny_detect(src):
+    return cv2.Canny(np.uint8(src), 4, 10, L2gradient=True)
+
+
+def extract_verge(edges, i, j, max_blank, dir, axis):
+    """
+    :param edges: img MAT resulting from canny edge procedure
+    :param i: starting row i
+    :param j: starting col j
+    :param max_blank: maximum number of blanks to rule out the existence of a verge outside of the current verge (in which case would be a fake verge)
+    :param dir: Directions of movement, 1 for right or down, -1 for left or up
+    :param axis:
+    :return: (r, c) index of the verge on the given 'axis' in the given 'dir' from the starting point (i, j)
+    """
+
+
+
+def edge_detect_expr(edges, original):
+    """
+    TODO: 1. SIMPLE Approach: pairwise mask over original image, then compute total
+          2. Traverse the image to mark the image.
+    """
+    se = 0
+    row_sum = 0
+    col_sum = 0
+    tot_sum = 0
+    for i in range(edges.shape[0]):
+        for j in range(edges.shape[1]):
+            if edges[i][j] > 0:
+                row_sum += i * original[i][j]
+                col_sum += j * original[i][j]
+                tot_sum += original[i][j]
+                se += 1
+    print(se)
+    if tot_sum != 0:
+        print(row_sum / tot_sum)
+        print(col_sum / tot_sum)
+
+
+def hori(img, i, j, d):
+    dest = j + d
+    if dest < 0 or dest >= img.shape[1]:
+        return img.item(i, j)
+    return img.item(i, dest)
+
+
+def verti(img, i, j, d):
+    dest = i + d
+    if dest < 0 or dest >= img.shape[0]:
+        return img.item(i, j)
+    return img.item(dest, j)
+
+
+def test_blur_then_nr(iname):
+    imgs = iname
+    numIMG = 5
+    imgr = None
+    for i in range(1, numIMG + 1):
+        target = cv2.imread(imgs.format(i), 0)
+        target = cv2.GaussianBlur(target, (9, 9), 0)
+        if i == 1:
+            imgr = target
+        else:
+            imgr = cv2.add(imgr, target)
+    return imgr / numIMG
+
+
+def test_noise_reduce(iname):
+    imgs = iname
+    numIMG = 3
+    imgr = None
+    original = None
+    for i in range(1, numIMG+1):
+        target = cv2.imread(imgs.format(i), 0)
+        if i == 1:
+            imgr = target
+            original = target
+        else:
+            imgr = cv2.add(imgr, target)
+    return imgr / numIMG, original
+
+
+def img_add(dest, src):
+    """Destructive!"""
+    row, col = dest.shape
+    for i in range(row):
+        for j in range(col):
+            dest[i][j] += src[i][j]
+
+
+
+# 1. Try Noise Reduction:
+# ---- 1.1 Reduction By Averaging, without FastNIMEANS  ~~ GOOD
+# ---- 1.2 Reduction By FastNIMEANS                     ~~ INFERIOR
+# ---- 1.3 Reduction By Combination                     ~~ INFERIOR
+# ---- 1 NOTE: USE PLOTTING OF ORIGINAL GRAPH TO SEE RESULT
+# 2. Try Di-Axial Scharr Kernel
+# ---- 2.1 Add To Name Scheme, record graphs and compare them
+# ---- 2 NOTE: GRAPH TO SAVE: 4-CONTRAST, TRANSITION PLOTS
+# 3. Optimizing Data Processing:
+# ---- 3.1 Marking point as edge maxima and minima according to STD Dev values
+# ---- 3.2 Taking Sequential Samples
+# ---- 3.3 Explore Thresholding Techniques
+
 def test():
     # SETTINGS
-    imgn = "img_19_3"
-    IMGDIR = "../testpic/"
+    imgn = "img_2_5"
+    IMGDIR = "../new_test/"
     ROOTMEAS = "meas/"
     SAVEDIR = ROOTMEAS+imgn + "/"
     imgr = cv2.imread(IMGDIR + imgn + ".png")
@@ -261,7 +452,7 @@ def test():
     c_int = dimc // 2
     end = 20
     sig = 0
-    ins = range(5, end, 2)
+    ins = range(7, end, 2)
     name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
     NAME_HEADER = SAVEDIR + name_scheme
     if not os.path.exists(SAVEDIR):
@@ -325,15 +516,16 @@ def test():
         plt.title('Scharr X'), plt.xticks([]), plt.yticks([])
         plt.subplot(2,2,4),plt.imshow(sobely,cmap = 'gray')
         plt.title('Scharr Y'), plt.xticks([]), plt.yticks([])
-        plt.savefig(NAME_HEADER + "_filters.png")
+        plt.savefig(NAME_HEADER + "filters.png")
+        #plt.savefig(NAME_HEADER + "2D_filters.png")
         plt.close()                                         # REMOVES TO SHOW CONTRAST OF FILTERS
 
 
         # DETECTION INIT
         gk_setting = "ksize:{0}, sigmax:{1}".format(gksize, sigmaX)
-        print(gk_setting)
         y_s_x = np.array([sobelx.item(r_int, c) for c in x])
         y_s_y = np.array([sobely.item(r, c_int) for r in x2])
+        print(gk_setting)
         print(extract_extrema(y_s_x))
         print(extract_extrema(y_s_y))
         fwrite.write(gk_setting)
@@ -355,7 +547,7 @@ def test():
         fwrite.write("y: zero_crossing: {0}, edge_converge: {1}\n".format(zy, ey))
 
         # GK_PLOT
-        if i == 9:
+        """if i == 9:
             fig = plt.figure(figsize=(16, 8))
             fig.canvas.set_window_title(gk_setting)
             plt.subplot(211)
@@ -364,19 +556,36 @@ def test():
             plt.subplot(212)
             plt.plot(y_s_y, 'b-')
             plt.ylabel("sobel_y")
-            plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")
+            #plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")"""
 
-        if i >= 13:
-            fig = plt.figure(figsize=(16, 8))
-            fig.canvas.set_window_title(gk_setting)
-            plt.subplot(211)
-            plt.plot(y_s_x, 'b-')
-            plt.ylabel("sobel_x")
-            plt.subplot(212)
-            plt.plot(y_s_y, 'b-')
-            plt.ylabel("sobel_y")
-            plt.show()
+        #if i >= 13:
+        fig = plt.figure(figsize=(16, 8))
+        fig.canvas.set_window_title(gk_setting)
+        plt.subplot(211)
+        plt.plot(y_s_x, 'b-')
+        plt.ylabel("sobel_x")
+        plt.subplot(212)
+        plt.plot(y_s_y, 'b-')
+        plt.ylabel("sobel_y")
+        plt.show()
         # plt.savefig(NAME_HEADER + "_" + gk_setting + ".png") # UNCOMMENT WHEN SAVING PLOTS
+
+        # USING MIN-MAX
+        """fig = plt.figure(figsize=(16, 8))
+        fig.canvas.set_window_title(gk_setting)
+        plt.subplot(221)
+        plt.plot(y_s_x, 'b-')
+        plt.ylabel("sobel_x")
+        plt.subplot(222)
+        plt.plot(min_max(y_s_x, max(y_s_x), min(y_s_x)), 'b-')
+        plt.subplot(223)
+        plt.plot(y_s_y, 'b-')
+        plt.ylabel("sobel_y")
+        plt.xlabel("Plain")
+        plt.subplot(224)
+        plt.plot(min_max(y_s_y, max(y_s_y), min(y_s_y)), 'b-')
+        plt.xlabel("MINMAX")
+        plt.show()"""
 
 
     fig = plt.figure(figsize=(16, 8))
@@ -475,8 +684,8 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
     center_y = -1 if ynum_imgs == 0 else ysum / ynum_imgs
     return center_x, center_y
 
-print("Center Detection yields: ")
-print(center_detect("../testpic/img_19_{0}.png", 3))
+#print("Center Detection yields: ")
+#print(center_detect("../testpic/img_19_{0}.png", 3))
 
 
 """plt.figure()
@@ -486,7 +695,8 @@ plt.show()"""
 #print(atan(56 / 200) * 180 / 3.1415926535)
 #print(atan(134 / 537) * 180 / 3.1415926535)
 
-test()
+#test()
+test_canny_detect()
 
 # INSIGHT:
 """Might be able to solve the problem by auto-thresholding and converting to binary.

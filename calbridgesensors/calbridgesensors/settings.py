@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,7 +26,7 @@ SECRET_KEY = '&vuf$!t_6n7_z^0pfj-gdmk2k^8(^4%thu&&i-a)5=na_klw!!'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "192.168.15.101", "10.142.156.122"]
 
 
 # Application definition
@@ -106,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Los_Angeles'
 
 USE_I18N = True
 
@@ -117,14 +118,20 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
+
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'var/static/')
 STATICFILES_DIRS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     os.path.join(BASE_DIR, 'static/')
 ]
+STATICFILE_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder'
+]
 
-# Log in URL dispatchers
+
+# AUTHENTICATION URL Dispatchers
+
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'sensors'
+LOGIN_REDIRECT_URL = 'sensors:index'
 LOGOUT_REDIRECT_URL = 'home'

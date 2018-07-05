@@ -30,6 +30,6 @@ def encode(time_sign):
     return PASSWORD[:index] + repl + PASSWORD[index+1:]
 
 
-print(send_data_to_server(0.1, 1.0, 2.0))
+print(send_data_to_server(0.5, 1.5, 1.5))
 #send_data_form(1.0, 2.0, 3.0)
 #cookies = {'csrftoken': "djioewfj34jod2jdoi3jr0jl983jsa", 'TIME': datetime.now()}
