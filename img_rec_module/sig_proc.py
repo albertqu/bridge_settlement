@@ -909,8 +909,6 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
     if len_ys < c_thresh:
         y_invalid = True
 
-    plt.imshow(imgr)
-    plt.show()
     center_x = -1 if x_invalid else sum(xs) / len_xs
     center_y = -1 if y_invalid else sum(ys) / len_ys
     return center_x, center_y
@@ -930,7 +928,8 @@ def random_test():
 
 
 #print("Center Detection yields: ")
-print(center_detect("../testpic/img_15_{0}.png", 3))
+"""for i in range(1, 26):
+    print(center_detect("../testpic/img_%d_{0}.png", 3))"""
 #2.5 + 13  = 15.5 / 2 = 7.75
 
 """plt.figure()
