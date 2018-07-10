@@ -7,8 +7,72 @@ import os
 from math import atan, sqrt
 
 
+class Line:
+
+    inf = float('inf')
+
+    def __init__(self, a=inf, b=inf, p1=None, p2=None, data=None):
+        if p1 and p2:
+            self.point(p1, p2)
+        elif data:
+            self.reg(data)
+        else:
+            self.a = a
+            self.b = b
+
+    def reg(self, data):
+        D = np.array([[d[0], 1] for d in data])
+        y = np.array([d[1] for d in data])
+        self.a, self.b = leastSquares(D, y)
+
+    def point(self, p1, p2):
+        self.a = 1
+
+    @staticmethod
+    def intersect(l1, l2):
+        x = (l2.b - l1.b) / (l1.a - l2.a)
+        y = l1.a * x + l1.b
+        return x, y
+
+
+class FastDataMatrix2D:
+
+    HOR = 1
+    VER = 0
+
+    def __init__(self, data, ax, index):
+        self._data = data
+        self._ax = ax
+        self._index = index
+
+    def set_axis(self, ax):
+        self._ax = ax
+
+    def set_index(self, index):
+        self._index = index
+
+    def copy(self, ax=None, index=None):
+        if ax and index:
+            return FastDataMatrix2D(self._data, ax, index)
+        else:
+            return FastDataMatrix2D(self._data, self._ax, self._index)
+
+    def __getitem__(self, item):
+        return self._data[self._index, item] if self._ax == FastDataMatrix2D.HOR else self._data[item, self._index]
+
+    def __setitem__(self, key, value):
+        if self._ax == FastDataMatrix2D.HOR:
+            self._data[self._index, key] = value
+        else:
+            self._data[key, self._index] = value
+
+    def __len__(self):
+        return self._data.shape[self._ax]
+
+
 def gauss_data_matrix(data):
     return np.array([[1, x ** 2, x, 1] for x in data])
+
 
 """if ori == 'h':
     x = np.array(range(img.shape[1]))
@@ -16,6 +80,7 @@ def gauss_data_matrix(data):
 else:
     x = np.array(range(img.shape[0]))
     y = np.array([img_rec.rel_lumin(img, r, p) for r in x])"""
+
 
 def data_matrix(input_data, degree):
     # degree is the degree of the polynomial you plan to fit the data with
@@ -166,6 +231,7 @@ def gauss_hat(x, a, b, c_s):
 
 
 def max_min(data):
+    # Return the maximum and minimum for the data
     maxi = data[0]
     max_ind = 0
     mini = data[0]
@@ -182,6 +248,7 @@ def max_min(data):
 
 
 def zero_crossing(data):
+    # Yields the center with zero-crossing method
     maxi, mini = max_min(data)
     cross = -1
     cross_count = 0
@@ -200,11 +267,45 @@ def root_finding(x1, x2, y1, y2):
 
 
 def check_cross(a, b):
+    """Helper method for zero crossing"""
     return a * b < 0
 
 
-def edge_converge(data):
+def edge_converge_base(data):
     maxi, mini = max_min(data)
+    width_thres = 70
+    if mini - maxi > width_thres:
+        return -1
+    else:
+        return (maxi + mini) / 2
+
+
+def edge_centroid(data, img_data):
+    # With Gaussian Blur might achieve the best performance
+    maxi, mini = max_min(data)
+    width_thres = 70
+    padding = 10
+    if mini - maxi > width_thres:
+        return -1
+    return centroid_seg(img_data, maxi - padding, mini + padding + 1)
+
+
+def centroid_seg(data, start, end):
+    isums = 0
+    total = 0
+    start = 0 if start < 0 else start
+    end = len(data) if end >= len(data) else end
+    for i in range(start, end):
+        isums += data[i] * i
+        total += data[i]
+    return isums / total if total else -1
+
+
+def edge_converge_extreme(data):
+    maxi, mini = max_min(data)
+    width_thres = 70
+    if mini - maxi > width_thres:
+        return -1
     emax = -1
     emin = -1
     maxflag = True
@@ -312,10 +413,11 @@ def sobel_process(imgr, gks, sig):
 
 def test_canny_detect():
     imgn = "img_3_{0}.png"
-    IMGDIR = "../new_test/"
+    IMGDIR = "../testpic/"
     NAME = IMGDIR + imgn
 
     denoised, original = test_noise_reduce(NAME)
+    print(get_center_val(denoised))
     NL_denoised = cv2.fastNlMeansDenoising(original)
     bdenoise = test_blur_then_nr(NAME)
 
@@ -350,6 +452,10 @@ def extract_verge(edges, i, j, max_blank, dir, axis):
     :return: (r, c) index of the verge on the given 'axis' in the given 'dir' from the starting point (i, j)
     """
 
+
+def significance_test(data, val):
+    """Outputs whether the maximum or minimum value is a significant value."""
+    return val in extract_extrema(data)[0] or val in extract_extrema(data)[1]
 
 
 def edge_detect_expr(edges, original):
@@ -390,30 +496,33 @@ def verti(img, i, j, d):
 
 def test_blur_then_nr(iname):
     imgs = iname
-    numIMG = 5
+    numIMG = 3
     imgr = None
     for i in range(1, numIMG + 1):
         target = cv2.imread(imgs.format(i), 0)
         target = cv2.GaussianBlur(target, (9, 9), 0)
         if i == 1:
-            imgr = target
+            imgr = np.uint16(target)
         else:
-            imgr = cv2.add(imgr, target)
+            imgr = imgr + target
     return imgr / numIMG
 
 
-def test_noise_reduce(iname):
+def get_center_val(img):
+    return img.item(img.shape[0] // 2, img.shape[1] // 2)
+
+
+def test_noise_reduce(iname, numIMG=5):
     imgs = iname
-    numIMG = 3
     imgr = None
     original = None
     for i in range(1, numIMG+1):
         target = cv2.imread(imgs.format(i), 0)
         if i == 1:
-            imgr = target
+            imgr = np.uint16(target)
             original = target
         else:
-            imgr = cv2.add(imgr, target)
+            imgr = imgr + target
     return imgr / numIMG, original
 
 
@@ -423,7 +532,6 @@ def img_add(dest, src):
     for i in range(row):
         for j in range(col):
             dest[i][j] += src[i][j]
-
 
 
 # 1. Try Noise Reduction:
@@ -439,20 +547,46 @@ def img_add(dest, src):
 # ---- 3.2 Taking Sequential Samples
 # ---- 3.3 Explore Thresholding Techniques
 
+
+def register(img):
+    lval = []
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            if img.item(i, j) > 250:
+                lval.append((i, j, img.item(i, j)))
+    print(lval)
+
+
+""" TEST GAUSSIAN BLUR'S influence on noise distribution:
+    Method:
+        1. Preliminary
+            1. Generate a random noise matrix with n * n, change shape to a vector
+            2. Gaussian blur applied, change shape to a vector
+            3. Compare noise level
+        2. Secondary
+            1. Generate a Gaussian / Cosine Matrix and add random noise matrix
+            2. Gaussian blur applied
+            3. Compare a randomly selected row of each one
+"""
+
+
+
 def test():
     # SETTINGS
-    imgn = "img_2_5"
+    imgn = "img_4_{0}"
     IMGDIR = "../new_test/"
     ROOTMEAS = "meas/"
     SAVEDIR = ROOTMEAS+imgn + "/"
-    imgr = cv2.imread(IMGDIR + imgn + ".png")
+    #imgr = cv2.imread(IMGDIR + imgn + ".png")
+    imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png")
     dimc = imgr.shape[1]
     dimr = imgr.shape[0]
     r_int = dimr // 2
     c_int = dimc // 2
-    end = 20
+    start = 7
+    end = 10
     sig = 0
-    ins = range(7, end, 2)
+    ins = range(start, end, 2)
     name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
     NAME_HEADER = SAVEDIR + name_scheme
     if not os.path.exists(SAVEDIR):
@@ -466,7 +600,13 @@ def test():
     cenvalsy = []
     edgvalsx = []
     edgvalsy = []
-    cv2.imshow("true", imgr)                                 # REMOVES TO SHOW IMAGE
+    ebvalsx = []
+    ebvalsy = []
+    ecvalsx = []
+    ecvalsy = []
+    ecbvalsx = []
+    ecbvalsy = []
+    #cv2.imshow("denoised", np.uint8(imgr))                                 # REMOVES TO SHOW IMAGE
     x = np.array(range(dimc))
     x2 = np.array(range(dimr))
 
@@ -476,7 +616,10 @@ def test():
         sigmaX = sig
         blur = cv2.GaussianBlur(imgr,gksize,sigmaX)
         #cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
-        img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+        if len(blur.shape) == 3:
+            img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+        else:
+            img = blur
 
         # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
         """x = np.array(range(dimc))
@@ -508,15 +651,15 @@ def test():
         kerneled = cv2.filter2D(img, -1, kernel)
         cv2.imshow("kerneled", kerneled)"""                 # KERNEL EXPERIMENT
         #laplacian = cv2.Laplacian(img,cv2.CV_64F)          # LAPLACIAN FILTERING
-        plt.subplot(2,2,1),plt.imshow(cv2.cvtColor(imgr, cv2.COLOR_BGR2GRAY),cmap = 'gray')
+        """plt.subplot(2,2,1),plt.imshow(cv2.cvtColor(imgr, cv2.COLOR_BGR2GRAY),cmap = 'gray')
         plt.title('Original'), plt.xticks([]), plt.yticks([])
         plt.subplot(2,2,2),plt.imshow(img,cmap = 'gray')
         plt.title('Gaussian Filter'), plt.xticks([]), plt.yticks([])
         plt.subplot(2,2,3),plt.imshow(sobelx,cmap = 'gray')
         plt.title('Scharr X'), plt.xticks([]), plt.yticks([])
         plt.subplot(2,2,4),plt.imshow(sobely,cmap = 'gray')
-        plt.title('Scharr Y'), plt.xticks([]), plt.yticks([])
-        plt.savefig(NAME_HEADER + "filters.png")
+        plt.title('Scharr Y'), plt.xticks([]), plt.yticks([])"""
+        #plt.savefig(NAME_HEADER + "filters.png")
         #plt.savefig(NAME_HEADER + "2D_filters.png")
         plt.close()                                         # REMOVES TO SHOW CONTRAST OF FILTERS
 
@@ -525,6 +668,10 @@ def test():
         gk_setting = "ksize:{0}, sigmax:{1}".format(gksize, sigmaX)
         y_s_x = np.array([sobelx.item(r_int, c) for c in x])
         y_s_y = np.array([sobely.item(r, c_int) for r in x2])
+        imgx = [imgr.item(r_int, c) for c in x]
+        imgy = [imgr.item(r, c_int) for r in x2]
+        blurimgx = [img.item(r_int, c) for c in x]
+        blurimgy = [img.item(r, c_int) for r in x2]
         print(gk_setting)
         print(extract_extrema(y_s_x))
         print(extract_extrema(y_s_y))
@@ -534,12 +681,25 @@ def test():
         # EDGE DETECTION
         zx = zero_crossing(y_s_x)
         cenvalsx.append(zx)
-        ex = edge_converge(y_s_x)
+        ex = edge_converge_extreme(y_s_x)
         edgvalsx.append(ex)
+        ebx = edge_converge_base(y_s_x)
+        ebvalsx.append(ebx)
+        ecx = edge_centroid(y_s_x, imgx)
+        ecvalsx.append(ecx)
+        ecbx = edge_centroid(y_s_x, blurimgx)
+        ecbvalsx.append(ecbx)
+
         zy = zero_crossing(y_s_y)
         cenvalsy.append(zy)
-        ey = edge_converge(y_s_y)
+        ey = edge_converge_extreme(y_s_y)
         edgvalsy.append(ey)
+        eby = edge_converge_base(y_s_y)
+        ebvalsy.append(eby)
+        ecy = edge_centroid(y_s_y, imgy)
+        ecvalsy.append(ecy)
+        ecby = edge_centroid(y_s_y, blurimgy)
+        ecbvalsy.append(ecby)
 
         # DATA RECORDING
         fwrite.write("x: zero_crossing: {0}, edge_converge: {1}; ".format(zx, ex))
@@ -590,12 +750,18 @@ def test():
 
     fig = plt.figure(figsize=(16, 8))
     plt.subplot(2, 1, 1)
-    plt.plot(ins, cenvalsx, 'b-', ins, edgvalsx, 'r-')
-    plt.legend(['zero crossing', 'edge_converging'], loc="lower left")
+    #plt.plot(ins, cenvalsx, 'b-', ins, edgvalsx, 'r-', ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
+    #plt.legend(['zero crossing', 'edge_converging_extreme', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
+    #plt.plot(ins, cenvalsx, 'b-', ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
+    #plt.legend(['zero crossing', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'],loc="lower left")
+    plt.plot(ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
+    plt.legend(['edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'],loc="lower left")
     plt.ylabel("x_meas")
     plt.subplot(2, 1, 2)
-    plt.plot(ins, cenvalsy, 'b-', ins, edgvalsy, 'r-')
-    plt.legend(['zero crossing', 'edge_converging'], loc="lower left")
+    #plt.plot(ins, cenvalsy, 'b-', ins, ebvalsy, 'g-', ins, ecvalsy, 'c-', ins, ecbvalsy, 'm-')
+    #plt.legend(['zero crossing', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
+    plt.plot(ins, ebvalsy, 'g-', ins, ecvalsy, 'c-', ins, ecbvalsy, 'm-')
+    plt.legend(['edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
     plt.ylabel("y_meas")
     plt.xlabel("kernel size")
     plt.show()
@@ -610,7 +776,10 @@ def folder_to_imgs(img_name_scheme, num_sample):
 gk = 9
 
 
-def center_detect(img_name_scheme, num_sample, sample_int=50):
+FM = FastDataMatrix2D
+
+
+def center_detect_old(img_name_scheme, num_sample, sample_int=50):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
     imgs = folder_to_imgs(img_name_scheme, num_sample)
     num_imgs = len(imgs)
@@ -620,10 +789,13 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
     ynum_imgs = num_imgs
     xsum = 0
     ysum = 0
-    zw = 1
-    ew = 0
+    zw = 0
+    ew = 1
+    count = 1
     for imgr in imgs:
-        #cv2.imshow("w", imgr)
+        if count == num_sample:
+            imgshow = imgr
+        count += 1
         #print(imgr.shape)
         # Image Processing
         gksize = (gk, gk)
@@ -642,7 +814,9 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
         while nr < dimr:
             data_x = sobelx[nr, :]
             zc_x = zero_crossing(data_x)
-            ed_x = edge_converge(data_x)
+            print("row:", nr)
+            ed_x = edge_centroid(data_x, FM(img, FM.HOR, nr))
+            print("At {0}: {1}".format(nr, ed_x))
             nr += sample_int
             xdummies.append(zc_x * zw + ed_x * ew)
             if zc_x == -1:
@@ -654,15 +828,13 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
         while nc < dimc:
             data_y = sobely[:, nc]
             zc_y = zero_crossing(data_y)
-            ed_y = edge_converge(data_y)
+            ed_y = edge_centroid(data_y, FM(img, FM.VER, nc))
             nc += sample_int
             ydummies.append(zc_y * zw + ed_y * ew)
             if zc_y == -1:
                 continue
             else:
                 ys.append(zc_y * zw + ed_y * ew)
-
-
         #print("x")
         #print(xdummies)
         #print(xs)
@@ -671,6 +843,7 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
         #print(ys)
         len_xs = len(xs)
         len_ys = len(ys)
+        print("img {0}: {1}".format(count - 1, xs))
         if len_xs < r_thresh:
             xnum_imgs -= 1
         else:
@@ -680,13 +853,98 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
         else:
             ysum += sum(ys) / len(ys)
 
+    plt.imshow(imgshow)
+    plt.show()
+
     center_x = -1 if xnum_imgs == 0 else xsum / xnum_imgs
     center_y = -1 if ynum_imgs == 0 else ysum / ynum_imgs
     return center_x, center_y
 
-#print("Center Detection yields: ")
-#print(center_detect("../testpic/img_19_{0}.png", 3))
 
+def center_detect(img_name_scheme, num_sample, sample_int=50):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
+    imgr = test_noise_reduce(img_name_scheme, num_sample)[0]
+
+    dimr = imgr.shape[0]
+    dimc = imgr.shape[1]
+    zw = 0
+    ew = 1
+    # Image Processing
+    gksize = (gk, gk)
+    sigmaX = 0
+    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
+    compare_images((np.uint8(imgr), 'Original'), (np.uint8(sobelx), 'Sobel X'), (np.uint8(sobely), 'Sobel Y'))
+    # Gathering Data
+    nr = sample_int
+    r_thresh = dimr * 2.0 / (sample_int * 3)
+    xs = []
+    xdummies = []
+    ys = []
+    ydummies = []
+    while nr < dimr:
+        data_x = sobelx[nr, :]
+        zc_x = zero_crossing(data_x)
+        print("row:", nr)
+        ed_x = edge_centroid(data_x, FM(img, FM.HOR, nr))
+        print("At {0}: {1}".format(nr, ed_x))
+        nr += sample_int
+        if ed_x == -1:
+            continue
+        else:
+            xs.append(zc_x * zw + ed_x * ew)
+    nc = sample_int
+    c_thresh = dimc / (sample_int * 4.0)
+    while nc < dimc:
+        data_y = sobely[:, nc]
+        zc_y = zero_crossing(data_y)
+        ed_y = edge_centroid(data_y, FM(img, FM.VER, nc))
+        nc += sample_int
+        if ed_y == -1:
+            continue
+        else:
+            ys.append(zc_y * zw + ed_y * ew)
+    #print("x")
+    #print(xdummies)
+    #print(xs)
+    #print("y")
+    #print(ydummies)
+    #print(ys)
+    len_xs = len(xs)
+    len_ys = len(ys)
+    print("imgX:", xs)
+    x_invalid = False
+    y_invalid = False
+    if len_xs < r_thresh:
+        x_invalid = True
+    if len_ys < c_thresh:
+        y_invalid = True
+
+    plt.imshow(imgr)
+    plt.show()
+
+    center_x = -1 if x_invalid else sum(xs) / len_xs
+    center_y = -1 if y_invalid else sum(ys) / len_ys
+    return center_x, center_y
+
+
+def random_test():
+    data = [27, 21, 22, 21, 21, 18, 41, 69, 83, 62, 38, 16, 21, 20, 18, 17]
+    print(len(data))
+    ids = 0
+    gs = 0
+    for i, d in enumerate(data):
+        if d == 83:
+            print(i)
+        ids += i * d
+        gs += d
+    print(ids / gs)
+
+
+#print("Center Detection yields: ")
+print(center_detect("../new_test/img_3_{0}.png", 5))
+#2.5 + 13  = 15.5 / 2 = 7.75
 
 """plt.figure()
 plt.plot([1,2 ,3])
@@ -696,7 +954,8 @@ plt.show()"""
 #print(atan(134 / 537) * 180 / 3.1415926535)
 
 #test()
-test_canny_detect()
+#test_canny_detect()
+#random_test()
 
 # INSIGHT:
 """Might be able to solve the problem by auto-thresholding and converting to binary.

@@ -1,0 +1,6 @@
+new_test
+img_4: 237,325
+
+test_pic
+img_19: 358, 264
+img_9: 243, 214
