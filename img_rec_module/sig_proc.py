@@ -901,7 +901,7 @@ def center_detect(img_name_scheme, num_sample, sample_int=50):
             ys.append(zc_y * zw + ed_y * ew)
     len_xs = len(xs)
     len_ys = len(ys)
-    print("imgX:", xs)
+    #print("imgX:", xs)
     x_invalid = False
     y_invalid = False
     if len_xs < r_thresh:
@@ -929,7 +929,7 @@ def random_test():
 
 #print("Center Detection yields: ")
 """for i in range(1, 26):
-    print(center_detect("../testpic/img_%d_{0}.png", 3))"""
+    print(center_detect("../testpic/img_%d_{0}.png" % i, 3))"""
 #2.5 + 13  = 15.5 / 2 = 7.75
 
 """plt.figure()
