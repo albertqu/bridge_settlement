@@ -1,5 +1,6 @@
 import picamera
 import os
+import sys
 import time
 
 class ImgCollector:
@@ -86,7 +87,7 @@ class ImgCollector:
 
 
 def main():
-    prompt = input("Welcome to the RPiCam Module. Type q for quick test or f / [other inputs] for full test.\n")
+    prompt = input("Welcome to the RPiCam Module. Type q for quick test, d for debug, or f / [other inputs] for full test.\n")
     global recur
     if prompt == 'q':
         directory = 'quick_test'
@@ -95,6 +96,9 @@ def main():
         raw_image = False
         num_meas = 1
         recur = True
+    elif prompt == 'd':
+        camera_debug()
+        sys.exit()
     else:
         directory = input("Input a directory:\n")
         name_pattern = input("Input a name pattern:\n")
@@ -142,6 +146,29 @@ def main():
         elif option == 'e':
             ic.shutdown()
             break
+
+
+def camera_debug():
+    DEBUG_DIR = 'debug'
+    filename = DEBUG_DIR + 'shutter_{0}_iso_{1}_bright_{2}_expo_{3}_flash_{4}.jpeg'
+    analog = 'analog_gain: '
+    awb_gain = 'awb_gain: '
+    expo_modes = ['night', 'night_preview', 'very_long']
+    flash_modes = ['off', 'redeye']
+    shutter = [100, 1000, 5000, 10000]
+    isos = [100, 400, 800]
+    brightness = [0, 50, 80, 100]
+    with picamera.PiCamera(resolution=(1920, 1200)) as cam:
+        time.sleep(1)
+        print(analog + str(cam.analog_gain))
+        print(awb_gain + str(cam.awb_gain))
+        for ss in shutter:
+            for iso in isos:
+                for br in brightness:
+                    for exp in expo_modes:
+                        for flash in flash_modes:
+                            cam.capture(filename.format(ss, iso, br, exp, flash), bayer=True)
+
 
 if __name__ == "__main__":
     recur = True
