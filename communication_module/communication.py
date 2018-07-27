@@ -6,7 +6,7 @@ from dateutil import parser
 from random import randint
 
 BRIDGE_NAME = 'dummy'
-dest = "http://127.0.0.1:8000/sensors/"+BRIDGE_NAME+"/update/"
+dest = "http://192.168.15.101:8000/sensors/"+BRIDGE_NAME+"/update/"
 PASSWORD = "djioewfj34jod2jdoi3jr0jl983jsa"
 
 

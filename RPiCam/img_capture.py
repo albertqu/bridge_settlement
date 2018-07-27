@@ -1,7 +1,9 @@
 import picamera
 import os
-import sys
+from fractions import Fraction
+import sys, traceback
 import time
+
 
 class ImgCollector:
 
@@ -24,7 +26,7 @@ class ImgCollector:
                 rfile = open("img_log.txt", "r")
                 try:
                     self.counter = int(rfile.read())
-                except:
+                except ValueError:
                     self.counter = 1
             else:
                 rfile = open("img_log.txt", "w")
@@ -54,10 +56,14 @@ class ImgCollector:
             self.capture = self.multi_capture
 
     def init_cam(self):
-        self.cam = picamera.PiCamera(resolution=(1920, 1200))
+        self.cam = picamera.PiCamera(resolution=(640, 480))
         time.sleep(2)
         self.cam.led = False
+        self.cam.framerate = Fraction(1, 6)
+        self.cam.rotation = 180
+        self.cam.shutter_speed = 800000
         self.cam.iso = 100
+        self.cam.exposure_mode = 'off'
         time.sleep(3)
         if self._num == 1:
             self.capture = self.uni_capture
@@ -113,6 +119,7 @@ def main():
             break
         except:
             directory = input("Ill-formated directory, type in another one: ")
+            traceback.print_exc(file=sys.stdout)
 
     while True:
         if recur:
@@ -149,25 +156,25 @@ def main():
 
 
 def camera_debug():
-    DEBUG_DIR = 'debug'
-    filename = DEBUG_DIR + 'shutter_{0}_iso_{1}_bright_{2}_expo_{3}_flash_{4}.jpeg'
+    DEBUG_DIR = 'debug/'
+    filename = DEBUG_DIR + 'shutter_{0}_iso_{1}_bright_{2}.jpeg'
     analog = 'analog_gain: '
     awb_gain = 'awb_gain: '
     expo_modes = ['night', 'night_preview', 'very_long']
-    flash_modes = ['off', 'redeye']
-    shutter = [100, 1000, 5000, 10000]
-    isos = [100, 400, 800]
-    brightness = [0, 50, 80, 100]
-    with picamera.PiCamera(resolution=(1920, 1200)) as cam:
+    #flash_modes = ['off', 'redeye']
+    flash_modes = ['off']
+    shutter = [600000, 800000, 1000000]
+    with picamera.PiCamera(resolution=(640, 480)) as cam:
         time.sleep(1)
         print(analog + str(cam.analog_gain))
-        print(awb_gain + str(cam.awb_gain))
+        print(awb_gain + str(cam.awb_gains))
+        cam.framerate = Fraction(1, 6)
         for ss in shutter:
-            for iso in isos:
-                for br in brightness:
-                    for exp in expo_modes:
-                        for flash in flash_modes:
-                            cam.capture(filename.format(ss, iso, br, exp, flash), bayer=True)
+            #for br in brightness:
+            time.sleep(0.1)
+            cam.shutter_speed = ss
+            cam.brightness = 50
+            cam.capture(filename.format(ss), bayer=False)
 
 
 if __name__ == "__main__":

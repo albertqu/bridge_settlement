@@ -1,21 +1,2 @@
-ksize:(7, 7), sigmax:0
-x: zero_crossing: 384.02617121928887, edge_converge: 387.0431588158123; 
-y: zero_crossing: 129.29754122457328, edge_converge: 121.61678031907721
-ksize:(9, 9), sigmax:0
-x: zero_crossing: 383.96018189688124, edge_converge: 387.3012564392491; 
-y: zero_crossing: 129.50451580805276, edge_converge: 121.49612797534343
-ksize:(11, 11), sigmax:0
-x: zero_crossing: 383.890268346129, edge_converge: 389.2924103354767; 
-y: zero_crossing: 129.57474200127916, edge_converge: 121.13124504174455
-ksize:(13, 13), sigmax:0
-x: zero_crossing: 383.81410676901874, edge_converge: 391.2333277951021; 
-y: zero_crossing: 129.5640241971465, edge_converge: 106.06175974104644
-ksize:(15, 15), sigmax:0
-x: zero_crossing: 383.7459968221841, edge_converge: 391.3045096864289; 
-y: zero_crossing: 129.53062816398142, edge_converge: -1
-ksize:(17, 17), sigmax:0
-x: zero_crossing: 383.6900762679058, edge_converge: 391.5446310526995; 
-y: zero_crossing: 129.49064467163691, edge_converge: -1
-ksize:(19, 19), sigmax:0
-x: zero_crossing: 383.64380673089414, edge_converge: -1; 
-y: zero_crossing: 129.44744641784868, edge_converge: -1
+x: edge_centroid: 383.6794588625068, poly: 383.2082082082082, gaussian: 383.5855855855856; 
+y: edge_centroid: 128.72770467836258, poly: 129.44144144144144, gaussian: 129.17717717717719

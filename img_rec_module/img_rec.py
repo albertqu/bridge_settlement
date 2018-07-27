@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from img_rec_module.sig_proc_test import FM, compare_data_plots, compare_images
 
 
 def identity(img):
@@ -114,6 +115,30 @@ def centroid_test(fname, n, trials, func, img_p=identity):
             im = img_p(cv2.imread(cf))
             print(centroid(im, func))
 
+
+def brightness_test():
+    BASE_DIR = '../calib/'
+    image_name = 'shutter_{0}_iso_{1}_bright_{2}.jpeg'
+    img_path = BASE_DIR + image_name
+    shutter = [100, 1000, 5000, 10000]
+    isos = [100, 400, 800]
+    brightness = [0, 50, 100]
+    expo_modes = ['auto', 'very_long']
+    for ss in shutter[0:]:
+        comp = []
+        plts = []
+        print(ss)
+        for iso in isos:
+            name = img_path.format(ss, iso, 'very_long')
+            imgr = cv2.imread(name)
+            tp = (imgr, name)
+            comp.append(tp)
+            img = cv2.cvtColor(imgr, cv2.COLOR_BGR2GRAY)
+            plts.append((FM(img, FM.HOR, img.shape[0] // 2).extract_array(), name))
+        compare_images(ilist=comp)
+        compare_data_plots(ilist=plts)
+
+
 gray_p = lambda img, r, c: img.item(r, c)
 
 if __name__ == '__main__':
@@ -146,5 +171,6 @@ if __name__ == '__main__':
         min_v = min(range(len(grad)), key=lambda i: grad[i])
         centers.append((max_v + min_v) / 2)"""
 
-    visualize_data("../testpic/", "../absdataplot/", 10, 'h', rel_lumin, data_p=abs_detect)
+    #visualize_data("../testpic/", "../absdataplot/", 10, 'h', rel_lumin, data_p=abs_detect)
+    brightness_test()
 
