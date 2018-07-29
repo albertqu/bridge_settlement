@@ -912,8 +912,8 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
     stdv = -1
     valuesH = [d[1] for d in hs]
     valuesV = [d[1] for d in vs]
-    line_a = HoughLine(x=hxs, data=valuesH)
-    line_b = HoughLine(x=vxs, data=valuesV)
+    line_a = HoughLine(x=hxs, data=hys)
+    line_b = HoughLine(x=vxs, data=vys)
     if len_hs >= r_thresh:
         x_valid = True
         stdh = std_dev(valuesH)

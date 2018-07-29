@@ -1632,7 +1632,7 @@ def center_detect_old(img_name_scheme, num_sample, sample_int=50):
 # The image sometimes has two peaks, try experimenting with different gaussian kernels
 
 
-def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=1, p=10, b=1, c=0):
+def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=1, p=10, b=1, c=0, hough=True):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     imgr = test_noise_reduce(folder_path + img_name_scheme, num_sample)[0]
@@ -1703,22 +1703,26 @@ def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, 
         vxs[i] = vs[i][0]
         vys[i] = vs[i][1]
     #hough_img = img_name_scheme.format(1)
-    hough_img = folder_path + img_name_scheme.format(1)
-    print(hough_img)
-    img_h = cv2.imread(hough_img)
-    if len_hs:
-        hp1, hp2, line_a = line_graph_contrast(img_h, hxs, hys)
-        print('Drawn H')
-    if len_vs:
-        vp1, vp2, line_b = line_graph_contrast(img_h, vxs, vys)
-        print('Drawn V')
-    namespace = 'houghs/hough_{0}{1}_{2}'.format(folder_path[3:], m, img_name_scheme.format(1))
-    if len_hs:
-        print(hp1, hp2)
-    if len_vs:
-        print(vp1, vp2)
-    print(namespace)
-    cv2.imwrite(namespace, img_h)
+    if hough:
+        hough_img = folder_path + img_name_scheme.format(1)
+        print(hough_img)
+        img_h = cv2.imread(hough_img)
+        if len_hs:
+            hp1, hp2, line_a = line_graph_contrast(img_h, hxs, hys)
+            print('Drawn H')
+        if len_vs:
+            vp1, vp2, line_b = line_graph_contrast(img_h, vxs, vys)
+            print('Drawn V')
+        namespace = 'houghs/hough_{0}{1}_{2}'.format(folder_path[3:], m, img_name_scheme.format(1))
+        if len_hs:
+            print(hp1, hp2)
+        if len_vs:
+            print(vp1, vp2)
+        print(namespace)
+        cv2.imwrite(namespace, img_h)
+    else:
+        line_a = HoughLine(x=hxs, data=hys)
+        line_b = HoughLine(x=vxs, data=vys)
     # --------------------------------------------------------
     # DATA RECORDING AND PROCESSING
     x_valid = False
