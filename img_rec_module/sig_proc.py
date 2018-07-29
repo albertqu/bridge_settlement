@@ -912,13 +912,13 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
     stdv = -1
     valuesH = [d[1] for d in hs]
     valuesV = [d[1] for d in vs]
-    line_a = HoughLine(x=hxs, data=hys)
-    line_b = HoughLine(x=vxs, data=vys)
     if len_hs >= r_thresh:
         x_valid = True
+        line_a = HoughLine(x=hxs, data=hys)
         stdh = std_dev(valuesH)
     if len_vs >= c_thresh:
         y_valid = True
+        line_b = HoughLine(x=vxs, data=vys)
         stdv = std_dev(valuesV)
     if c == 1:
         center_x = sum(valuesH) / len_hs if x_valid else -1
@@ -936,12 +936,14 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
 
 
 if __name__ == '__main__':
-    folder = "../calib4/"
+    folder = "../testpic/"
     ns = folder + "img_%d_{0}.png"
-    for i in range(59, 80):
-        try:
+    for i in range(1, 25):
+        """try:
             val = center_detect(ns % i, 5)
             print(val)
         except AttributeError:
-            pass
-
+            print('no ' + ns % i)
+            pass"""
+        val = center_detect(ns % i, 3)
+        print(val)

@@ -348,10 +348,10 @@ def gauss_reg(x, y, p0):
     pred = gauss_hat(maxi, a, b, c_s)
     real = y[maxi]
     a = real / pred // 1000000000 * 10"""
-    timeb = datetime.now()
+    #timeb = datetime.now()
     param, vm = curve_fit(gauss_hat, x, y, p0=p0)
-    timea = datetime.now()
-    print(timea - timeb)
+    #timea = datetime.now()
+    #print(timea - timeb)
     return param
 
 
@@ -400,7 +400,7 @@ def max_min(data):
 def edge_max_min(data):
     # Returns a *safe* edge maxi, mini for the data
     # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
-    width_thres = 120
+    width_thres = 90
     value_thres = 20
     maxi = data[0]
     max_ind = 0
@@ -584,7 +584,7 @@ def poly_fitting(data, img_data, padding=10):
 def poly_fitting_params(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
     maxi, mini = max_min(data)
-    width_thres = 120
+    width_thres = 90
     value_thres = 20
     if data[maxi] < value_thres or mini - maxi > width_thres:
         print(data[maxi], mini, maxi)
@@ -645,7 +645,7 @@ def gaussian_fitting(data, img_data, padding=10):
 def gaussian_fitting_params(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
     maxi, mini = max_min(data)
-    width_thres = 120
+    width_thres = 90
     value_thres = 20  # TODO: CONSOLIDATE THIS VALUE
     if data[maxi] < value_thres or mini - maxi > width_thres:
         print(data[maxi], mini, maxi)
@@ -1485,7 +1485,6 @@ def test(folder, imgn):
 
         # print(extract_extrema(y_s_x))
         # print(extract_extrema(y_s_y))
-        compare_data_plots((y_s_x.extract_array(), 'Sobel X'), (y_s_y.extract_array(), 'Sobel Y'))
         # EDGE DETECTION
         ecx = edge_centroid(y_s_x, imgx)
         try:
@@ -1523,13 +1522,19 @@ def test(folder, imgn):
 
         # if i >= 13:
         fig = plt.figure(figsize=(16, 8))
-        plt.subplot(211)
+        plt.subplot(411)
+        plt.plot(y_s_x.extract_array(), 'b-')
+        plt.ylabel("sobel_x")
+        plt.subplot(412)
         imgx.initialize()
         plt.plot(xh, imgx.extract_array(), 'b-', xh, bgx, 'm-', xh, deducedx, 'c-', xp_h_plot, yp_h_plot, 'g-',
                  xg_h_plot, yg_h_plot, 'r-')
         plt.ylabel("Horizontal Slice, ECX: {0}".format(ecx))
         plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
-        plt.subplot(212)
+        plt.subplot(413)
+        plt.plot(y_s_y.extract_array(), 'b-')
+        plt.ylabel("sobel_y")
+        plt.subplot(414)
         imgy.initialize()
         plt.plot(xv, imgy.extract_array(), 'b-', xv, bgy, 'm-', xv, deducedy, 'c-', xp_v_plot, yp_v_plot, 'g-',
                  xg_v_plot, yg_v_plot, 'r-')
@@ -1632,7 +1637,7 @@ def center_detect_old(img_name_scheme, num_sample, sample_int=50):
 # The image sometimes has two peaks, try experimenting with different gaussian kernels
 
 
-def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=1, p=10, b=1, c=0, hough=True):
+def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=0, p=10, b=1, c=0, hough=True):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     imgr = test_noise_reduce(folder_path + img_name_scheme, num_sample)[0]
@@ -2053,7 +2058,7 @@ def convergence_test(folder, ns):
             imgfile = "%s_{0}.png" % img_name
             # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
             try:
-                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, m=m)
+                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, debug=False, m=m)
                 # PUT IN CSV
                 cwriter.writerow([str(i), str(x), str(y), str(stdh), str(stdv)])
                 # CONVERGENCE
@@ -2072,7 +2077,7 @@ def convergence_test(folder, ns):
             imgfile = "%s_{0}.png" % img_name
             # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
             try:
-                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, m=m)
+                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, debug=False, m=m)
                 # PUT IN CSV
                 cwriter.writerow([str(i), str(x), str(y), str(stdh), str(stdv)])
                 # CONVERGENCE
@@ -2112,9 +2117,6 @@ def convergence_test(folder, ns):
     fwrite.close()
 
 
-
-
-
 def parameter_convert(method, padding, blur):
     return method + 2 * padding + blur * 100
 
@@ -2123,7 +2125,7 @@ def main():
     # TODO: HANDLE THE MAXI MINI LEFT AND RIGHT PROBLEM (2 PEAKS)
     folder = "../calib4/"
     img_name = "img_59_{0}.jpg"
-    ns = folder + "img_%d_{0}.png"
+    ns = "img_%d_{0}.png"
     # print("Center Detection yields: ")
     # gaussian_kernel_expr('testpic', 'img_{0}')
     #sobel_kernel_expr('testpic', 'img_{0}')
@@ -2131,11 +2133,9 @@ def main():
     """for i in range(59, 193):
         #if i in [29]:
         try:
-            if i == 0:
-                val = center_detect(ns % i, 5, debug=True)
-            else:
-                val = center_detect(ns % i, 5)
-            print(str(i), val)
+            if i in range(133, 145) or i in [59, 60148, 173, 175]:
+                val = center_detect_test(folder, ns % i, 5, debug=True, hough=False)
+                print(str(i), val)
         except TypeError:
             print('No image {0}!'.format(i))
         print('------------------------------------------------------')"""
