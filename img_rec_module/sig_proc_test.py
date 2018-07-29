@@ -5,6 +5,7 @@ from scipy.optimize import curve_fit
 #from img_rec_module import img_rec
 from random import randint
 import os
+import csv
 from datetime import datetime
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
 
@@ -396,6 +397,28 @@ def max_min(data):
     return max_ind, min_ind
 
 
+def edge_max_min(data):
+    # Returns a *safe* edge maxi, mini for the data
+    # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
+    width_thres = 120
+    value_thres = 20
+    maxi = data[0]
+    max_ind = 0
+    mini = data[0]
+    min_ind = 0
+    for i in range(1, len(data)):
+        target = data[i]
+        if target > maxi:
+            maxi = target
+            max_ind = i
+        if target < mini:
+            mini = target
+            min_ind = i
+    maxi, mini = max_ind, min_ind
+    assert data[maxi] >= value_thres and mini - maxi <= width_thres and maxi < mini
+    return maxi, mini
+
+
 def min_max(data, max, min):
     """ Converts the data to min max space. """
     g_diff = max - min
@@ -427,14 +450,8 @@ def smart_interval(start, end, data):
 
 
 def edge_preprocess(data, padding):
-    # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
-    maxi, mini = max_min(data)
-    width_thres = 120
-    value_thres = 20
-    assert data[maxi] < value_thres or mini - maxi > width_thres
-    start = maxi - padding
-    end = mini + padding + 1
-    start, end = smart_interval(start, end, data)
+    maxi, mini = edge_max_min(data)
+    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
     return start, end
 
 
@@ -541,14 +558,31 @@ def centroid_seg(data, start, end):
     return isums / total if total else -1
 
 
-
-
-DEGREES = []
-
-
 # POLYNOMIAL FITTING
+def poly_fitting(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
+    try:
+        start, end = edge_preprocess(data, padding)
+    except AssertionError:
+        return -1
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        y = img_data.extract_array()
+    else:
+        y = np.array(img_data[start:end])
+    degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
+    ind = np.argmin(cost)
+    degree = degrees[ind]
+    param = params[ind]
+    degree_register(degree)
+    curve_x, curve_y = poly_curve(param, x)
+    center_id = np.argmax(curve_y)
+    return curve_x[center_id]
+
+
 def poly_fitting_params(data, img_data, padding=10):
-    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
     maxi, mini = max_min(data)
     width_thres = 120
     value_thres = 20
@@ -573,15 +607,41 @@ def poly_fitting_params(data, img_data, padding=10):
     ind = np.argmin(cost)
     degree = degrees[ind]
     param = params[ind]
-    DEGREES.append(degree)
+    degree_register(degree)
     return param, x
 
 
-def poly_fitting(data, img_data, padding):
-    return
+DEGREES = {}
+
+
+def degree_register(elem):
+    if elem in DEGREES:
+        DEGREES[elem] += 1
+    else:
+        DEGREES[elem] = 1
 
 
 # GAUSSIAN FITTING
+def gaussian_fitting(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
+    try:
+        maxi, mini = edge_max_min(data)
+    except AssertionError:
+        return -1
+    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        idata = img_data.extract_array()
+    else:
+        idata = np.array(img_data[start:end])
+    try:
+        param = gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)])
+    except RuntimeError:
+        return -1
+    return param[1]
+
+
 def gaussian_fitting_params(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
     maxi, mini = max_min(data)
@@ -654,32 +714,53 @@ def sobel_process(imgr, gks, sig):
 
 
 def test_canny_detect():
-    imgn = "img_3_{0}.png"
-    IMGDIR = "../testpic/"
+    imgn = "img_89_{0}.png"
+    IMGDIR = "../calib4/"
     NAME = IMGDIR + imgn
 
-    denoised, original = test_noise_reduce(NAME)
-    print(get_center_val(denoised))
-    NL_denoised = cv2.fastNlMeansDenoising(original)
-    bdenoise = test_blur_then_nr(NAME)
+    while True:
+        lowp = input("Type the Lower Bound or c to cancel:    ")
+        if lowp == 'c':
+            break
+        while True:
+            try:
+                low = int(lowp)
+                break
+            except ValueError:
+                lowp = input("Bad input Try again! ")
+        highp = input("Type the Upper Bound or c to cancel:   ")
+        if highp == 'c':
+            break
+        while True:
+            try:
+                high = int(highp)
+                break
+            except ValueError:
+                highp = input("Bad input Try again! ")
 
-    dblur, sobelx, sobely = sobel_process(denoised, 9, 0)
-    nldblur = sobel_process(NL_denoised, 9, 0)[0]
-    pblur, sobelx, sobely = sobel_process(original, 9, 0)
+        denoised, original = test_noise_reduce(NAME)
+        print(get_center_val(denoised))
+        NL_denoised = cv2.fastNlMeansDenoising(original)
+        bdenoise = test_blur_then_nr(NAME)
 
-    de_edges = canny_detect(denoised)
-    db_edges = canny_detect(dblur)
-    nld_edges = canny_detect(nldblur)
-    blur_denoise = canny_detect(bdenoise)
-    blur_edges = canny_detect(pblur)
-    edge_detect_expr(db_edges, original)
-    """compare_images((imgr, 'Original'), (edges, 'Canny Edge'),
-                   (sobelx, 'Sobel X'), (sobely, 'Sobel Y'))"""
-    compare_images((original, 'Original'), (NL_denoised, "NLMEANS"), (de_edges, 'DENOISE Edges'), (blur_edges, 'Plain Blur Edges'),
-                   (denoised, 'Denoised'), (nld_edges, 'NIDE-BLUR Edges'), (db_edges, 'DE-BLUR Edges'), (blur_denoise, "BDENOISE Edges"))
+        dblur, sobelx, sobely = sobel_process(denoised, 9, 0)
+        nldblur = sobel_process(NL_denoised, 9, 0)[0]
+        pblur, sobelx, sobely = sobel_process(original, 9, 0)
+
+        de_edges = canny_detect(denoised, low, high)
+        db_edges = canny_detect(dblur, low, high)
+        nld_edges = canny_detect(nldblur, low, high)
+        blur_denoise = canny_detect(bdenoise, low, high)
+        blur_edges = canny_detect(pblur, low, high)
+        #edge_detect_expr(db_edges, original)
+        """compare_images((imgr, 'Original'), (edges, 'Canny Edge'),
+                       (sobelx, 'Sobel X'), (sobely, 'Sobel Y'))"""
+        compare_images((original, 'Original'), (NL_denoised, "NLMEANS"), (de_edges, 'DENOISE Edges'),
+                       (blur_edges, 'Plain Blur Edges'), (denoised, 'Denoised'), (nld_edges, 'NIDE-BLUR Edges'),
+                       (db_edges, 'DE-BLUR Edges'), (blur_denoise, "BDENOISE Edges"), color_map='gray')
 
 
-def canny_detect(src):
+def canny_detect(src, low=4, high=10):
     return cv2.Canny(np.uint8(src), 4, 10, L2gradient=True)
 
 
@@ -738,7 +819,7 @@ def verti(img, i, j, d):
 
 def test_blur_then_nr(iname):
     imgs = iname
-    numIMG = 3
+    numIMG = 5
     imgr = None
     for i in range(1, numIMG + 1):
         target = cv2.imread(imgs.format(i), 0)
@@ -760,6 +841,8 @@ def test_noise_reduce(iname, numIMG=5):
     original = None
     for i in range(1, numIMG+1):
         target = cv2.imread(imgs.format(i), 0)
+        if target is None:
+            raise AttributeError("File {0} not found".format(iname))
         if i == 1:
             imgr = np.uint16(target)
             original = target
@@ -776,10 +859,10 @@ def img_add(dest, src):
             dest[i][j] += src[i][j]
 
 
-""" ====================================
-    ============ PLOTTING ==============
-    ============= HELPER ===============
-    ==================================== """
+""" ===================================
+    ============ PLOTTING =============
+    ============= HELPER ==============
+    =================================== """
 
 
 def quick_plot(data, xs=None):
@@ -843,8 +926,12 @@ def line_graph_contrast(img, xs, ys):
     y2 = int(y0 - 1000 * (line._c))
     p1, p2 = (x1, y1), (x2, y2)
     cv2.line(img, p1, p2, (255, 0, 0), 1)
-    return p1, p2
+    return p1, p2, line
 
+
+""" ===================================
+    ====== DATA RECORDING HELPER ======
+    =================================== """
 
 # 1. Try Noise Reduction:
 # ---- 1.1 Reduction By Averaging, without FastNIMEANS  ~~ GOOD
@@ -1079,7 +1166,7 @@ def test_old():
     #plt.savefig(plot_save)
 
 
-def test():
+def test_interactive():
     # TODO: TEST OUT FACET MODEL AND CONDITIONAL CONVOLUTIONAL KERNEL
     # SETTINGS
     while True:
@@ -1093,6 +1180,7 @@ def test():
         ROOTMEAS = "meas/"
         SAVEDIR = ROOTMEAS + imgn + "/"
         # imgr = cv2.imread(IMGDIR + imgn + ".png")
+
         imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", numIMG=5)
         dimc = imgr.shape[1]
         dimr = imgr.shape[0]
@@ -1293,6 +1381,164 @@ def test():
         # fig.savefig(plot_save)
         # plt.savefig(plot_save)"""
 
+
+def test(folder, imgn):
+    # TODO: TEST OUT FACET MODEL AND CONDITIONAL CONVOLUTIONAL KERNEL
+    # SETTINGS
+    ROOTMEAS = "meas/"
+    SAVEDIR = ROOTMEAS + imgn[:-4] + "/"
+    # imgr = cv2.imread(IMGDIR + imgn + ".png")
+
+    imgr, ori = test_noise_reduce(folder + imgn, numIMG=5)
+    dimc = imgr.shape[1]
+    dimr = imgr.shape[0]
+    while True:
+        r_prompt = input("Type in the index for horizontal slice or c to cancel: (range: [0, {0}])   ".format(dimr - 1))  # dimr // 2
+        c_prompt = input("Type in the index for vertical slice: (range: [0, {0}])   ".format(dimc - 1))  # dimc // 2
+        if r_prompt == 'c':
+            break
+        while True:
+            try:
+                r_int = int(r_prompt)
+                assert 0 <= r_int < dimr
+                break
+            except ValueError:
+                r_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimr - 1))  # dimr // 2
+            except AssertionError:
+                r_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimr - 1))
+        while True:
+            try:
+                c_int = int(c_prompt)
+                assert 0 <= c_int < dimc
+                break
+            except ValueError:
+                c_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
+            except AssertionError:
+                c_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
+        # start = 7
+        # end = 10
+        sig = 0
+        gk = 9
+        name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
+        NAME_HEADER = SAVEDIR + name_scheme
+        if not os.path.exists(SAVEDIR):
+            os.mkdir(SAVEDIR)
+        fwrite = open(NAME_HEADER + ".txt", "w")
+        plot_save = NAME_HEADER + ".png"
+
+        # INITIALIZATION
+        # cv2.imshow("denoised", np.uint8(imgr))                                 # REMOVES TO SHOW IMAGE
+        # x = np.array(range(dimc))
+        # x2 = np.array(range(dimr))
+
+        # INITIALIZATION
+        gksize = (gk, gk)
+        sigmaX = sig
+        blur = cv2.GaussianBlur(imgr, gksize, sigmaX)
+        # cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
+        if len(blur.shape) == 3:
+            img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+        else:
+            img = blur
+
+        # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
+        """x = np.array(range(dimc))
+        #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
+        y = np.array([img.item(dimr // 2, c) for c in x])
+        a1, b1, c_s1 = gauss_reg(x, y)
+
+        x2 = np.array(range(dimr))
+        y2 = np.array([img.item(r, dimc // 2) for r in x2])
+        a2, b2, c_s2 = gauss_reg(x2, y2)
+        rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
+        img = img - rem_gauss
+        cv2.imshow("denoise", img)
+        y_hat = gauss_hat(x, a1, b1, c_s1)
+        plt.figure(figsize=(16, 8))
+        plt.plot(x, y, 'b-', x, y_hat, 'r-')
+        plt.show()
+        plt.close()
+        plt.figure(figsize=(16,8))
+        plt.plot(x, y-y_hat, 'b-')
+        plt.show()"""
+
+        # IMAGE PROCESSING
+        sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
+        sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
+
+
+        # DETECTION INIT
+        xh = np.array(range(dimc))
+        xv = np.array(range(dimr))
+        zeroh = np.zeros(dimc)
+        zerov = np.zeros(dimr)
+        y_s_x = FM(sobelx, FM.HOR, r_int)
+        y_s_y = FM(sobely, FM.VER, c_int)
+        imgx = FM(imgr, FM.HOR, r_int)
+        imgy = FM(imgr, FM.VER, c_int)
+        blurimgx = FM(img, FM.HOR, r_int)
+        blurimgy = FM(img, FM.VER, c_int)
+        gx, bgx, deducedx = gauss_bg_deduce(xh, imgx)
+        gy, bgy, deducedy = gauss_bg_deduce(xv, imgy)
+
+
+
+        # print(extract_extrema(y_s_x))
+        # print(extract_extrema(y_s_y))
+        compare_data_plots((y_s_x.extract_array(), 'Sobel X'), (y_s_y.extract_array(), 'Sobel Y'))
+        # EDGE DETECTION
+        ecx = edge_centroid(y_s_x, imgx)
+        try:
+            # paramhp, xp1 = poly_fitting_params(y_s_x, deducedx)
+            # paramhg, xg1 = gaussian_fitting_params(y_s_x, deducedx)
+            paramhp, xp1 = poly_fitting_params(y_s_x, imgx)
+            paramhg, xg1 = gaussian_fitting_params(y_s_x, imgx)
+            xp_h_plot, yp_h_plot = poly_curve(paramhp, xp1)
+            xg_h_plot, yg_h_plot = gaussian_curve(xg1, paramhg[0], paramhg[1], paramhg[2])
+        except AssertionError:
+            print("No image data for horizontal slice!")
+            xp_h_plot, yp_h_plot = xh, zeroh
+            xg_h_plot, yg_h_plot = xh, zeroh
+
+        px, gx = xp_h_plot[np.argmax(yp_h_plot)], xg_h_plot[np.argmax(yg_h_plot)]
+        print("edge: {0}, poly:{1}, gaussian:{2}".format(ecx, px, gx))
+
+        ecy = edge_centroid(y_s_y, imgy)
+        try:
+            paramvp, xp2 = poly_fitting_params(y_s_y, imgy)
+            paramvg, xg2 = gaussian_fitting_params(y_s_y, imgy)
+            xp_v_plot, yp_v_plot = poly_curve(paramvp, xp2)
+            xg_v_plot, yg_v_plot = gaussian_curve(xg2, paramvg[0], paramvg[1], paramvg[2])
+        except AssertionError:
+            print("No image data for vertical slice!")
+            xp_v_plot, yp_v_plot = xv, zerov
+            xg_v_plot, yg_v_plot = xv, zerov
+        py, gy = xp_v_plot[np.argmax(yp_v_plot)], xg_v_plot[np.argmax(yg_v_plot)]
+        print("edge: {0} poly:{1}, gaussian:{2}".format(ecy, py, gy))
+
+        # DATA RECORDING
+        fwrite.write("x: edge_centroid: {0}, poly: {1}, gaussian: {2}; ".format(ecx, px, gx))
+        fwrite.write('\n')
+        fwrite.write("y: edge_centroid: {0}, poly: {1}, gaussian: {2}\n".format(ecy, py, gy))
+
+        # if i >= 13:
+        fig = plt.figure(figsize=(16, 8))
+        plt.subplot(211)
+        imgx.initialize()
+        plt.plot(xh, imgx.extract_array(), 'b-', xh, bgx, 'm-', xh, deducedx, 'c-', xp_h_plot, yp_h_plot, 'g-',
+                 xg_h_plot, yg_h_plot, 'r-')
+        plt.ylabel("Horizontal Slice, ECX: {0}".format(ecx))
+        plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
+        plt.subplot(212)
+        imgy.initialize()
+        plt.plot(xv, imgy.extract_array(), 'b-', xv, bgy, 'm-', xv, deducedy, 'c-', xp_v_plot, yp_v_plot, 'g-',
+                 xg_v_plot, yg_v_plot, 'r-')
+        plt.ylabel("Vertical Slice, ECY: {0}".format(ecy))
+        plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
+        plt.show()
+        # plt.savefig(NAME_HEADER + "_" + gk_setting + ".png") # UNCOMMENT WHEN SAVING PLOTS
+
+
 FM = FastDataMatrix2D
 
 
@@ -1386,6 +1632,119 @@ def center_detect_old(img_name_scheme, num_sample, sample_int=50):
 # The image sometimes has two peaks, try experimenting with different gaussian kernels
 
 
+def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=1, p=10, b=1, c=0):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    imgr = test_noise_reduce(folder_path + img_name_scheme, num_sample)[0]
+    dimr = imgr.shape[0]
+    dimc = imgr.shape[1]
+    # Image Processing
+    gksize = (gk, gk)
+    sigmaX = 0
+    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    # ------------------------------------------------------------
+    # Parameter Setting
+    METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
+               3: zero_crossing, 4: edge_converge_base, 5: edge_converge_extreme}
+    edge_method = METHODS[m]
+    nr = sample_int
+    r_thresh = dimr / (sample_int * 3.0)
+    nc = sample_int
+    c_thresh = dimc / (sample_int * 3.0)
+    # ------------------------------------------------------------
+    # Gathering Data
+    hs = []
+    vs = []
+    while nr < dimr:
+        data_x = FM(sobelx, FM.HOR, nr)
+        if m < 3:
+            ec_x = edge_method(data_x, FM(img, FM.HOR, nr), p)
+        else:
+            ec_x = edge_method(data_x)
+        nr += sample_int
+        if ec_x == -1:
+            continue
+        else:
+            hs.append((nr - sample_int, ec_x))
+
+    while nc < dimc:
+        data_y = FM(sobely, FM.VER, nc)
+        if m < 3:
+            ec_y = edge_method(data_y, FM(img, FM.VER, nc), p)
+        else:
+            ec_y = edge_method(data_y)
+        nc += sample_int
+        if ec_y == -1:
+            continue
+        else:
+            vs.append((nc - sample_int, ec_y))
+    len_hs = len(hs)
+    len_vs = len(vs)
+    # ------------------------------------------------------------
+    # DEBUG MODULE
+    if debug:
+        print((dimr, dimc))
+        print("imgX:", hs)
+        print("imgY:", vs)
+        compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), color_map='gray')
+        test(folder_path, img_name_scheme)
+    # ------------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    hxs = np.zeros(len_hs)
+    hys = np.zeros(len_hs)
+    for i in range(len_hs):
+        hxs[i] = hs[i][1]
+        hys[i] = hs[i][0]
+    vxs = np.zeros(len_vs)
+    vys = np.zeros(len_vs)
+    for i in range(len_vs):
+        vxs[i] = vs[i][0]
+        vys[i] = vs[i][1]
+    #hough_img = img_name_scheme.format(1)
+    hough_img = folder_path + img_name_scheme.format(1)
+    print(hough_img)
+    img_h = cv2.imread(hough_img)
+    if len_hs:
+        hp1, hp2, line_a = line_graph_contrast(img_h, hxs, hys)
+        print('Drawn H')
+    if len_vs:
+        vp1, vp2, line_b = line_graph_contrast(img_h, vxs, vys)
+        print('Drawn V')
+    namespace = 'houghs/hough_{0}{1}_{2}'.format(folder_path[3:], m, img_name_scheme.format(1))
+    if len_hs:
+        print(hp1, hp2)
+    if len_vs:
+        print(vp1, vp2)
+    print(namespace)
+    cv2.imwrite(namespace, img_h)
+    # --------------------------------------------------------
+    # DATA RECORDING AND PROCESSING
+    x_valid = False
+    y_valid = False
+    stdh = -1
+    stdv = -1
+    valuesH = [d[1] for d in hs]
+    valuesV = [d[1] for d in vs]
+    if len_hs >= r_thresh:
+        x_valid = True
+        stdh = std_dev(valuesH)
+    if len_vs >= c_thresh:
+        y_valid = True
+        stdv = std_dev(valuesV)
+    if c == 1:
+        center_x = sum(valuesH) / len_hs if x_valid else -1
+        center_y = sum(valuesV) / len_vs if y_valid else -1
+    else:
+        if x_valid and y_valid:
+            center_x, center_y = HoughLine.intersect(line_a, line_b)
+        else:
+            center_x = sum(valuesH) / len_hs if x_valid else -1
+            center_y = sum(valuesV) / len_vs if y_valid else -1
+    return center_x, center_y, stdh, stdv
+
+
 def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=1, p=10, b=1):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
@@ -1465,10 +1824,10 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
     hough_img = img_name_scheme.format(1)
     img_h = cv2.imread(hough_img)
     if len_hs:
-        hp1, hp2 = line_graph_contrast(img_h, hxs, hys)
+        hp1, hp2, lina = line_graph_contrast(img_h, hxs, hys)
         print('Drawn H')
     if len_vs:
-        vp1, vp2 = line_graph_contrast(img_h, vxs, vys)
+        vp1, vp2, linb = line_graph_contrast(img_h, vxs, vys)
         print('Drawn V')
     namespace = 'houghs/hough_{0}'.format(hough_img[3:])
     if len_hs:
@@ -1657,19 +2016,115 @@ def sobel_kernel_expr(folder, ns):
     compare_data_plots((Es, ks, 'Error'), (Ts, ks, 'False Positive'), (Fs, ks, 'False Negative'), suptitle="Sobel Kernel Test")
 
 
+def convergence_test(folder, ns):
+    offset = '../'
+    convergence = {}
+    line_stdh = []
+    line_stdv = []
+    variations = []
+    startNP = 59
+    startP = 80
+    endP = 193
+    ms = range(3)
+    fwrite = open('meas/convergence.csv', 'w')
+    cwriter = csv.writer(fwrite)
+    cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
+    for m in ms:
+        cwriter.writerow([str(m)])
+        # Convergence
+        lrh = 0
+        lrhs = 0
+        lrv = 0
+        lrvs = 0
+        # Consistency Cycled
+        pv = 0
+        pvs = 0
+        rcount = 0
+        cvx = np.zeros(4)
+        cvy = np.zeros(4)
+        #print(g)
+        for i in range(startNP, startP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y), str(stdh), str(stdv)])
+                # CONVERGENCE
+                if x != -1:
+                    lrh += stdh ** 2
+                    lrhs += 1
+                if y != -1:
+                    lrv += stdv ** 2
+                    lrvs += 1
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+        for i in range(startP, endP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y, stdh, stdv = center_detect_test(fpath, imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y), str(stdh), str(stdv)])
+                # CONVERGENCE
+                if x != -1:
+                    lrh += stdh ** 2
+                    lrhs += 1
+                if y != -1:
+                    lrv += stdv ** 2
+                    lrvs += 1
+                # Record x, y, check rcount, refresh CONSISTENCY
+                cvx[rcount] = x
+                cvy[rcount] = y
+                rcount += 1
+                if rcount == 4:
+                    pv += np.var(cvx) + np.var(cvy)
+                    pvs += 1
+                    rcount = 0
+                    cvx = np.zeros(4)
+                    cvy = np.zeros(4)
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+            # print(str(i), val)
+        mselrh = sqrt(lrh / lrhs)
+        mselrv = sqrt(lrv / lrvs)
+        msepv = sqrt(pv / pvs)
+        cvg = {'LineConvergenceH': mselrh if lrhs else float('inf'),
+               'LineConvergenceV': mselrv if lrvs else float('inf'),
+               'PicConsistency': msepv}
+        convergence[m] = cvg
+        line_stdh.append(mselrh)
+        line_stdv.append(mselrv)
+        variations.append(msepv)
+    print(convergence)
+    compare_data_plots((line_stdh, ms, 'Line Convergence Hor'), (line_stdv, ms, 'Line Convergence Ver'),
+                       (variations, ms, 'Reading Consistency'), suptitle="Convergence/Consistency Test")
+    fwrite.close()
+
+
+
+
+
 def parameter_convert(method, padding, blur):
     return method + 2 * padding + blur * 100
 
 
 def main():
+    # TODO: HANDLE THE MAXI MINI LEFT AND RIGHT PROBLEM (2 PEAKS)
     folder = "../calib4/"
     img_name = "img_59_{0}.jpg"
     ns = folder + "img_%d_{0}.png"
     # print("Center Detection yields: ")
     # gaussian_kernel_expr('testpic', 'img_{0}')
     #sobel_kernel_expr('testpic', 'img_{0}')
-
-    for i in range(59, 193):
+    convergence_test('calib4/', 'img_{0}')
+    """for i in range(59, 193):
         #if i in [29]:
         try:
             if i == 0:
@@ -1679,7 +2134,7 @@ def main():
             print(str(i), val)
         except TypeError:
             print('No image {0}!'.format(i))
-        print('------------------------------------------------------')
+        print('------------------------------------------------------')"""
 
 
 def case_calc():
@@ -1720,8 +2175,10 @@ def distance(h, angle):
 
 
 if __name__ == '__main__':
-    #main()
-    test()
+    main()
+    #print(DEGREES)
+    #test_interactive()
+    #test_canny_detect()
 
 
 

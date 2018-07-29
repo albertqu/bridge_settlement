@@ -1,10 +1,17 @@
 import cv2
 import numpy as np
-from math import sqrt, tan, radians
+from scipy.optimize import curve_fit
+import os
+import csv
+from datetime import datetime
+from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
+
+""" ===================================
+========== ANALYTIC GEOMETRY ==========
+======================================= """
 
 
 class Line:
-
     inf = float('inf')
 
     def __init__(self, a=inf, b=inf, p1=None, p2=None, data=None):
@@ -31,60 +38,115 @@ class Line:
         return x, y
 
 
-class FastDataMatrix2D:
-
-    HOR = 1
-    VER = 0
-
-    def __init__(self, data, ax, index):
-        self._data = data
-        self._ax = ax
-        self._index = index
-
-    def set_axis(self, ax):
-        self._ax = ax
-
-    def set_index(self, index):
-        self._index = index
-
-    def extract_array(self):
-        return self._data[self._index, :] if self._ax == FastDataMatrix2D.HOR else self._data[:, self._index]
-
-    def copy(self, ax=None, index=None):
-        if ax and index:
-            return FastDataMatrix2D(self._data, ax, index)
+class HoughLine:
+    def __init__(self, rho_rad=0, theta=0, x=None, data=None):
+        if data is not None and x is not None:
+            self.reg(x, data)
         else:
-            return FastDataMatrix2D(self._data, self._ax, self._index)
+            self._r = degrees(rho_rad)
+            self._t = theta
+            self._s = sin(rho_rad)
+            self._c = cos(rho_rad)
 
-    def __getitem__(self, item):
-        return self._data[self._index, item] if self._ax == FastDataMatrix2D.HOR else self._data[item, self._index]
+    def reg(self, x, data):
+        """D = hough_data_matrix(x, data)
+        print(D)
+        y = np.zeros(len(data))
+        cosine, sine, self._r = leastSquares(D, y)
+        self._t = angle_interp(sine, cosine)
+        self._s = sine
+        self._c = cosine"""
+        x1, x2 = x[0], x[-1]
+        y1, y2 = data[0], data[-1]
+        theta0 = theta_pred(x1, y1, x2, y2)
+        p0 = [theta0, x1 * cos(theta0) + y1 * sin(theta0)]
+        pm, vm = curve_fit(hough_line, x, data, p0=p0)
+        if pm[1] < 0:
+            pm[1] = -pm[1]
+            pm[0] -= HC
+            # pm[0] = 2 * np.pi
+        angle = normalize_angle(pm[0])
+        self._t = angle
+        self._r = pm[1]
+        self._s = sin(angle)
+        self._c = cos(angle)
 
-    def __setitem__(self, key, value):
-        if self._ax == FastDataMatrix2D.HOR:
-            self._data[self._index, key] = value
+    def extract_points(self, x_input):
+        x1 = int(x_input[0])
+        x2 = int(x_input[-1])
+        y1 = int(self.fit_x(x1))
+        y2 = int(self.fit_x(x2))
+        return (x1, y1), (x2, y2)
+
+    def fit_x(self, x):
+        # print(self._r, self._t)
+        return (self._r - x * self._c) / self._s
+
+    def __str__(self):
+        return 'hough line with cos:{0}, sin:{1}, rho:{2}, theta:{3}'.format(self._c, self._s,
+                                                                             self._r, degrees(self._t))
+
+    @staticmethod
+    def intersect(l1, l2):
+        x = (l2._r / l2._s - l1._r / l1._s) / (l2._c / l2._s - l1._c / l1._s)
+        y = l1.fit_x(x)
+        return x, y
+
+
+# QC: QUARTER_CYCLE, HC: HALF_CYCLE, TQC: THIRD_QUARTER_CYCLE, FC: FULL_CYCLE
+QC = np.pi / 2
+HC = np.pi
+TQC = 3 * np.pi / 2
+FC = 2 * np.pi
+
+
+def angle_interp(s, c):
+    if c == 1.0:
+        return 0
+    elif s == 1.0:
+        return np.pi / 2
+    elif c == -1.0:
+        return np.pi
+    elif s == -1.0:
+        return np.pi * 3 / 2
+    elif c < 0 < s:
+        return acos(c)
+    elif s < 0 and c < 0:
+        return 2 * np.pi - acos(c)
+    elif s < 0 < c:
+        return asin(s) + 2 * np.pi
+    else:
+        return asin(s)
+
+
+def normalize_angle(angle):
+    res = angle - (angle // FC) * FC
+    return res
+    """
+    if QC < res < HC:
+        return res + HC
+    elif HC <= res <= TQC:
+        return res - HC
+    else:
+        return res"""
+
+
+def theta_pred(x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    angle = sin_angle_from_points(dx, dy)
+    if dx * dy <= 0:
+        return np.pi / 2 - angle
+    else:
+        root = root_finding(x1, x2, y1, y2)
+        if root < 0:
+            return np.pi / 2 + angle
         else:
-            self._data[key, self._index] = value
-
-    def __len__(self):
-        return self._data.shape[self._ax]
+            return angle + 3 * np.pi / 2
 
 
-def gauss_data_matrix(data):
-    return np.array([[1, x ** 2, x, 1] for x in data])
-
-
-def data_matrix(input_data, degree):
-    # Polynomial fitting data matrix
-    Data = np.zeros((len(input_data), degree + 1))
-
-    for k in range(0, degree + 1):
-        Data[:, k] = (list(map(lambda x: x ** k, input_data)))
-
-    return Data
-
-
-def leastSquares(D, y):
-    return np.linalg.lstsq(D, y, rcond=None)[0]
+def sin_angle_from_points(dx, dy):
+    return asin(abs(dy) / sqrt(dx ** 2 + dy ** 2))
 
 
 def poly_curve(params, x_input):
@@ -100,6 +162,138 @@ def poly_curve(params, x_input):
     return x, y
 
 
+def gauss_2d(x, y, a, b1, c_s1, b2, c_s2):
+    return a * np.exp(- ((x - b1) ** 2 / (2 * c_s1) + (y - b2) ** 2) / (2 * c_s2))
+
+
+def gauss_hat(x, a, b, c_s):
+    return a * np.exp(- (x - b) ** 2 / (2 * c_s))
+
+
+def gaussian_curve(x_input, a, b, c_s):
+    x_range = [x_input[1], x_input[-1]]
+    x = np.linspace(x_range[0], x_range[1], 1000)
+    y = a * np.exp(- (x - b) ** 2 / (2 * c_s))
+    return x, y
+
+
+def hough_line(x, theta, rho):
+    return (rho - x * cos(theta)) / sin(theta)
+
+
+""" ===================================
+========== MATRIX-ARRAY UTIL ==========
+======================================= """
+
+
+class FastDataMatrix2D:
+    # TODO: HANDLE THE CASE WHEN IT WRAPS 1D
+
+    HOR = 1
+    VER = 0
+
+    def __init__(self, data, ax, index):
+        self._data = data
+        self._ax = ax
+        assert 0 <= index < self.irange(), "start: {0}, end: {1}, ax: {2}, index: {3}".format(self.start, self.end,
+                                                                                              self._ax, index)
+        self._index = index
+        self.itr = 0
+        self.initialize()
+
+    def segmentize(self, start, end):
+        assert 0 <= start < end <= self._data.shape[self._ax], "start: {0}, end: {1}, ax: {2}, index: {3}".format(start,
+                                                                                                                  end,
+                                                                                                                  self._ax,
+                                                                                                                  self._index)
+        self.start = start
+        self.end = end
+
+    def initialize(self):
+        self.segmentize(0, self._data.shape[self._ax])
+
+    def irange(self):
+        # index range of the fast matrix array
+        return self._data.shape[1 - self._ax]
+
+    def set_axis(self, ax):
+        """USE copy when trying to switch axis and index"""
+        self._ax = ax
+        if self._index >= self.irange():
+            raise IndexError("Old index {0} is too large for the new axis".format(self._index))
+        self.initialize()
+
+    def set_index(self, index):
+        assert 0 <= index < self.irange(), "start: {0}, end: {1}, ax: {2}, index: {3}".format(self.start, self.end,
+                                                                                              self._ax, index)
+        self._index = index
+
+    def extract_array(self):
+        """Optimize later for better performance"""
+        arr = self._data[self._index, self.start:self.end] if self._ax == FastDataMatrix2D.HOR \
+            else self._data[self.start:self.end, self._index]
+        return np.array(arr)
+
+    def copy(self, ax=None, index=None):
+        if ax is not None and index is not None:
+            return FastDataMatrix2D(self._data, ax, index)
+        else:
+            return FastDataMatrix2D(self._data, self._ax, self._index)
+
+    def __iter__(self):
+        raise RuntimeError("You need the ITER method!")
+
+    def __next__(self):
+        raise RuntimeError("You need the NEXT method!")
+
+    def __getitem__(self, item):
+        return self._data[self._index, item + self.start] if self._ax == FastDataMatrix2D.HOR \
+            else self._data[item + self.start, self._index]
+
+    def __setitem__(self, key, value):
+        if self._ax == FastDataMatrix2D.HOR:
+            self._data[self._index, key + self.start] = value
+        else:
+            self._data[key + self.start, self._index] = value
+
+    def __len__(self):
+        return self.end - self.start
+
+
+""" ===================================
+=========== REGRESSION UTILS ==========
+======================================= """
+
+
+# Generic Regression Tools 128-133
+def leastSquares(D, y):
+    return np.linalg.lstsq(D, y, rcond=None)[0]
+
+
+def MSE(y, y_hat, N):
+    return np.linalg.norm(y - y_hat) ** 2 / N
+
+
+def std_dev(data):
+    std_dev = 0
+    len_data = len(data)
+    mean = sum(data) / len_data
+    for i in range(len_data):
+        std_dev += (data[i] - mean) ** 2
+    return sqrt(std_dev / len_data)
+
+
+# Polynomial Regression Tools 137-171
+def poly_data_matrix(input_data, degree):
+    # degree is the degree of the polynomial you plan to fit the data with
+    Data = np.zeros((len(input_data), degree + 1))
+
+    for k in range(0, degree + 1):
+        Data[:, k] = (list(map(lambda x: x ** k, input_data)))
+
+    return Data
+
+
 def poly_error(params, D_a, y_a):
     '''degree=len(params)-1
     y=x_a*0
@@ -111,38 +305,48 @@ def poly_error(params, D_a, y_a):
     return np.linalg.norm(y - y_a) ** 2
 
 
-def MSE(y, y_hat, N):
-    return np.linalg.norm(y - y_hat) ** 2 / N
-
-
 def improvedCost(x, y, x_test, y_test, start, end):
     """Given a set of x and y points training points,
     this function calculates polynomial approximations of varying
     degrees from start to end. Then it returns the cost, with
     the polynomial tested on test points of each degree in an array"""
     c = []
-    for degree in range(start, end):
+    degrees = range(start, end)
+    ps = []
+    for degree in degrees:
         # YOUR CODE HERE
-        D = data_matrix(x, degree)
+        D = poly_data_matrix(x, degree)
         p = leastSquares(D, y)
-        D_t = data_matrix(x_test, degree)
+        ps.append(p)
+        D_t = poly_data_matrix(x_test, degree)
         y_hat = np.dot(D_t, p)
         c.append(MSE(y_test, y_hat, len(x_test)))
-    return c
+    return np.array(degrees), ps, np.array(c)
 
 
-def gauss_reg(x, y):
-    skip_x = np.array([x[i] for i in range(len(y)) if y[i] != 0])
+# Gaussian Regression Tools 184-210
+def gauss_data_matrix(data):
+    return np.array([[1, x ** 2, x, 1] for x in data])
+
+
+def gauss_reg(x, y, p0):
+    """Given a set of x and y training points, this function
+    calculates the gaussian approximation function"""
+    """skip_x = np.array([x[i] for i in range(len(y)) if y[i] != 0])
     y_prime = np.array([y[i] for i in range(len(y)) if y[i] != 0])
     logy = np.log(y_prime)
 
     sol = leastSquares(gauss_data_matrix(skip_x), logy)
     alp, bet, gam, lam = sol
     a = np.e ** alp
-    a *= 10
     c_s = - 1 / (2 * bet)
     b = gam * c_s
-    return a, b, c_s
+    maxi, mini = max_min(y)
+    pred = gauss_hat(maxi, a, b, c_s)
+    real = y[maxi]
+    a = real / pred // 1000000000 * 10"""
+    param, vm = curve_fit(gauss_hat, x, y, p0=p0)
+    return param
 
 
 def gauss_mat(shape, a, b1, c_s1, b2, c_s2):
@@ -154,16 +358,24 @@ def gauss_mat(shape, a, b1, c_s1, b2, c_s2):
     return mat
 
 
-def gauss_2d(x, y, a, b1, c_s1, b2, c_s2):
-    return a * np.e ** (- ((x - b1) ** 2  / (2 * c_s1) + (y - b2) ** 2) / (2 * c_s2))
+# Hough Transform Regression Tools
+def hough_data_matrix(x, y):
+    dim = len(x)
+    mat = np.full((dim, 3), -1.0)
+    for i in range(dim):
+        mat[i][0] = x[i]
+        mat[i][1] = y[i]
+    return mat
 
 
-def gauss_hat(x, a, b, c_s):
-    return a * np.e ** (- (x - b) ** 2 / (2 * c_s))
+""" =======================================
+========= EDGE DETECTION UTILS ============
+=========================================== """
 
 
+# Generic Helper
 def max_min(data):
-    # Return the maximum and minimum for the data
+    # Returns the maximum and minimum for the data
     maxi = data[0]
     max_ind = 0
     mini = data[0]
@@ -179,6 +391,65 @@ def max_min(data):
     return max_ind, min_ind
 
 
+def edge_max_min(data):
+    # Returns a *safe* edge maxi, mini for the data
+    # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
+    width_thres = 120
+    value_thres = 20
+    maxi = data[0]
+    max_ind = 0
+    mini = data[0]
+    min_ind = 0
+    for i in range(1, len(data)):
+        target = data[i]
+        if target > maxi:
+            maxi = target
+            max_ind = i
+        if target < mini:
+            mini = target
+            min_ind = i
+    maxi, mini = max_ind, min_ind
+    assert data[maxi] >= value_thres and mini - maxi <= width_thres and maxi < mini
+    return maxi, mini
+
+
+def min_max(data, max, min):
+    """ Converts the data to min max space. """
+    g_diff = max - min
+    return [(d - min) / g_diff for d in data]
+
+
+def root_finding(x1, x2, y1, y2):
+    """Given two points on a line, finds its zero crossing root."""
+    return - y1 * (x2 - x1) / (y2 - y1) + x1
+
+
+def check_cross(a, b):
+    # Checks whether two points are of opposite signs
+    return a * b < 0
+
+
+def round_up(num):
+    down = int(num)
+    if num - down > 0:
+        return num + 1
+    else:
+        return num
+
+
+def smart_interval(start, end, data):
+    start = 0 if start < 0 else start
+    end = len(data) if end > len(data) else end
+    return start, end
+
+
+def edge_preprocess(data, padding):
+    maxi, mini = edge_max_min(data)
+    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
+    return start, end
+
+
+# ZERO CROSSING (PEAK FINDING)
 def zero_crossing(data):
     # Yields the center with zero-crossing method
     maxi, mini = max_min(data)
@@ -194,15 +465,7 @@ def zero_crossing(data):
     return -1 if cross_count > 1 else cross
 
 
-def root_finding(x1, x2, y1, y2):
-    return - y1 * (x2 - x1) / (y2 - y1) + x1
-
-
-def check_cross(a, b):
-    """Helper method for zero crossing"""
-    return a * b < 0
-
-
+# AVERAGE METHOD FOR EDGE CENTER FINDING
 def edge_converge_base(data):
     maxi, mini = max_min(data)
     width_thres = 70
@@ -212,28 +475,7 @@ def edge_converge_base(data):
         return (maxi + mini) / 2
 
 
-def edge_centroid(data, img_data):
-    # With Gaussian Blur might achieve the best performance
-    maxi, mini = max_min(data)
-    width_thres = 70
-    value_thres = 20
-    padding = 10
-    if data[maxi] < value_thres or mini - maxi > width_thres:
-        return -1
-    return centroid_seg(img_data, maxi - padding, mini + padding + 1)
-
-
-def centroid_seg(data, start, end):
-    isums = 0
-    total = 0
-    start = 0 if start < 0 else start
-    end = len(data) if end >= len(data) else end
-    for i in range(start, end):
-        isums += data[i] * i
-        total += data[i]
-    return isums / total if total else -1
-
-
+# PSEUDO EDGE (closest noise gradient change) CENTER FINDING
 def edge_converge_extreme(data):
     maxi, mini = max_min(data)
     width_thres = 70
@@ -282,17 +524,151 @@ def extract_extrema(data):
     return signifmax, signifmin
 
 
-def min_max(data, max, min):
-    g_diff = max - min
-    return [d / g_diff for d in data]
+# CENTROID METHOD FOR EDGE CENTER FINDING
+def edge_centroid(data, img_data, padding=10):
+    # With Gaussian Blur might achieve the best performance
+    try:
+        start, end = edge_preprocess(data, padding)
+    except AssertionError:
+        return -1
+    isums = 0
+    total = 0
+    for i in range(start, end):
+        isums += img_data[i] * i
+        total += img_data[i]
+    return isums / total if total else -1
 
 
-def round_up(num):
-    down = int(num)
-    if num - down > 0:
-        return num + 1
+def centroid_seg(data, start, end):
+    """ Given a segment (start, end) of the data,
+    find the centroid. """
+    isums = 0
+    total = 0
+    start = 0 if start < 0 else start
+    end = len(data) if end > len(data) else end
+    for i in range(start, end):
+        isums += data[i] * i
+        total += data[i]
+    return isums / total if total else -1
+
+
+# POLYNOMIAL FITTING
+def poly_fitting(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
+    try:
+        start, end = edge_preprocess(data, padding)
+    except AssertionError:
+        return -1
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        y = img_data.extract_array()
     else:
-        return num
+        y = np.array(img_data[start:end])
+    degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
+    ind = np.argmin(cost)
+    degree = degrees[ind]
+    param = params[ind]
+    degree_register(degree)
+    curve_x, curve_y = poly_curve(param, x)
+    center_id = np.argmax(curve_y)
+    return curve_x[center_id]
+
+
+def poly_fitting_params(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
+    maxi, mini = max_min(data)
+    width_thres = 120
+    value_thres = 20
+    if data[maxi] < value_thres or mini - maxi > width_thres:
+        print(data[maxi], mini, maxi)
+        raise AssertionError("Bad column or row")
+    start = maxi - padding
+    end = mini + padding + 1
+    start, end = smart_interval(start, end, data)
+    if start > end:
+        try:
+            print(maxi, mini, img_data._ax, start, end)
+        except:
+            print("else", maxi, mini, start, end)
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        y = img_data.extract_array()
+    else:
+        y = np.array(img_data[start:end])
+    degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
+    ind = np.argmin(cost)
+    degree = degrees[ind]
+    param = params[ind]
+    degree_register(degree)
+    return param, x
+
+
+DEGREES = {}
+
+
+def degree_register(elem):
+    if elem in DEGREES:
+        DEGREES[elem] += 1
+    else:
+        DEGREES[elem] = 1
+
+
+# GAUSSIAN FITTING
+def gaussian_fitting(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
+    try:
+        maxi, mini = edge_max_min(data)
+    except AssertionError:
+        return -1
+    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        idata = img_data.extract_array()
+    else:
+        idata = np.array(img_data[start:end])
+    try:
+        param = gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)])
+    except RuntimeError:
+        return -1
+    return param[1]
+
+
+def gaussian_fitting_params(data, img_data, padding=10):
+    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
+    maxi, mini = max_min(data)
+    width_thres = 120
+    value_thres = 20  # TODO: CONSOLIDATE THIS VALUE
+    if data[maxi] < value_thres or mini - maxi > width_thres:
+        print(data[maxi], mini, maxi)
+        raise AssertionError("Bad column or row")
+    start = maxi - padding
+    end = mini + padding
+    start, end = smart_interval(start, end, data)
+    x = np.array(range(start, end))
+    if type(img_data) == FastDataMatrix2D:
+        img_data.segmentize(start, end)
+        idata = img_data.extract_array()
+    else:
+        idata = np.array(img_data[start:end])
+    return gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)]), x
+
+
+"""======================================
+======== IMAGE PROCESSING UTIL ==========
+========================================= """
+
+
+def gauss_bg_deduce(x, img_data):
+    # TODO: OPTIMIZE PERFORMANCE
+    idata = img_data.extract_array()
+    p0 = [1, len(img_data) / 2, std_dev(idata)]
+    a, b, c_s = gauss_reg(x, idata, p0=p0)
+    rem_gauss = gauss_hat(x, a, b, c_s)
+    new_y = idata - rem_gauss
+    return x, rem_gauss, new_y
 
 
 def sobel_process(imgr, gks, sig):
@@ -304,14 +680,81 @@ def sobel_process(imgr, gks, sig):
         img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
     else:
         img = blur
+    # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
+    """x = np.array(range(dimc))
+    #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
+    y = np.array([img.item(dimr // 2, c) for c in x])
+    a1, b1, c_s1 = gauss_reg(x, y)
+
+    x2 = np.array(range(dimr))
+    y2 = np.array([img.item(r, dimc // 2) for r in x2])
+    a2, b2, c_s2 = gauss_reg(x2, y2)
+    rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
+    img = img - rem_gauss
+    cv2.imshow("denoise", img)
+    y_hat = gauss_hat(x, a1, b1, c_s1)
+    plt.figure(figsize=(16, 8))
+    plt.plot(x, y, 'b-', x, y_hat, 'r-')
+    plt.show()
+    plt.close()
+    plt.figure(figsize=(16,8))
+    plt.plot(x, y-y_hat, 'b-')
+    plt.show()"""
+
     # IMAGE PROCESSING
     sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
     sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
     return img, sobelx, sobely
 
 
+def test_canny_detect():
+    imgn = "img_89_{0}.png"
+    IMGDIR = "../calib4/"
+    NAME = IMGDIR + imgn
 
-def canny_detect(src):
+    while True:
+        lowp = input("Type the Lower Bound or c to cancel:    ")
+        if lowp == 'c':
+            break
+        while True:
+            try:
+                low = int(lowp)
+                break
+            except ValueError:
+                lowp = input("Bad input Try again! ")
+        highp = input("Type the Upper Bound or c to cancel:   ")
+        if highp == 'c':
+            break
+        while True:
+            try:
+                high = int(highp)
+                break
+            except ValueError:
+                highp = input("Bad input Try again! ")
+
+        denoised, original = test_noise_reduce(NAME)
+        print(get_center_val(denoised))
+        NL_denoised = cv2.fastNlMeansDenoising(original)
+        bdenoise = test_blur_then_nr(NAME)
+
+        dblur, sobelx, sobely = sobel_process(denoised, 9, 0)
+        nldblur = sobel_process(NL_denoised, 9, 0)[0]
+        pblur, sobelx, sobely = sobel_process(original, 9, 0)
+
+        de_edges = canny_detect(denoised, low, high)
+        db_edges = canny_detect(dblur, low, high)
+        nld_edges = canny_detect(nldblur, low, high)
+        blur_denoise = canny_detect(bdenoise, low, high)
+        blur_edges = canny_detect(pblur, low, high)
+        # edge_detect_expr(db_edges, original)
+        """compare_images((imgr, 'Original'), (edges, 'Canny Edge'),
+                       (sobelx, 'Sobel X'), (sobely, 'Sobel Y'))"""
+        compare_images((original, 'Original'), (NL_denoised, "NLMEANS"), (de_edges, 'DENOISE Edges'),
+                       (blur_edges, 'Plain Blur Edges'), (denoised, 'Denoised'), (nld_edges, 'NIDE-BLUR Edges'),
+                       (db_edges, 'DE-BLUR Edges'), (blur_denoise, "BDENOISE Edges"), color_map='gray')
+
+
+def canny_detect(src, low=4, high=10):
     return cv2.Canny(np.uint8(src), 4, 10, L2gradient=True)
 
 
@@ -370,7 +813,7 @@ def verti(img, i, j, d):
 
 def test_blur_then_nr(iname):
     imgs = iname
-    numIMG = 3
+    numIMG = 5
     imgr = None
     for i in range(1, numIMG + 1):
         target = cv2.imread(imgs.format(i), 0)
@@ -392,6 +835,8 @@ def test_noise_reduce(iname, numIMG=5):
     original = None
     for i in range(1, numIMG + 1):
         target = cv2.imread(imgs.format(i), 0)
+        if target is None:
+            raise AttributeError("File {0} not found".format(iname))
         if i == 1:
             imgr = np.uint16(target)
             original = target
@@ -406,6 +851,13 @@ def img_add(dest, src):
     for i in range(row):
         for j in range(col):
             dest[i][j] += src[i][j]
+
+
+
+
+""" ===================================
+    ====== DATA RECORDING HELPER ======
+    =================================== """
 
 
 # 1. Try Noise Reduction:
@@ -431,139 +883,132 @@ def register(img):
     print(lval)
 
 
-def folder_to_imgs(img_name_scheme, num_sample):
-    """This function takes img files and return cv imgs"""
-    return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample+1)]
+""" TEST GAUSSIAN BLUR'S influence on noise distribution:
+    Method:
+        1. Preliminary
+            1. Generate a random noise matrix with n * n, change shape to a vector
+            2. Gaussian blur applied, change shape to a vector
+            3. Compare noise level
+        2. Secondary
+            1. Generate a Gaussian / Cosine Matrix and add random noise matrix
+            2. Gaussian blur applied
+            3. Compare a randomly selected row of each one
+"""
 
-gk = 9
+
+
+
 
 
 FM = FastDataMatrix2D
 
 
-# The image taken is flipped horizontally, result x should be img.shape[1] - x
-# The image sometimes has two peaks, try experimenting with different gaussian kernels
+def folder_to_imgs(img_name_scheme, num_sample):
+    """This function takes img files and return cv imgs"""
+    return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample + 1)]
 
 
-def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9):
-    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair"""
+def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=0, p=10, b=1, c=0):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    timeb = datetime.now()
     imgr = test_noise_reduce(img_name_scheme, num_sample)[0]
     dimr = imgr.shape[0]
     dimc = imgr.shape[1]
-    zw = 0
-    ew = 1
     # Image Processing
     gksize = (gk, gk)
     sigmaX = 0
     img = cv2.GaussianBlur(imgr, gksize, sigmaX)
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0,  ksize=-1)
-    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
-    # Gathering Data
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    # ------------------------------------------------------------
+    # Parameter Setting
+    METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
+               3: zero_crossing, 4: edge_converge_base, 5: edge_converge_extreme}
+    edge_method = METHODS[m]
     nr = sample_int
     r_thresh = dimr / (sample_int * 3.0)
-    xs = []
-    ys = []
-    while nr < dimr:
-        data_x = FM(sobelx, FM.HOR, nr)
-        zc_x = zero_crossing(data_x)
-        ed_x = edge_centroid(data_x, FM(img, FM.HOR, nr))
-        nr += sample_int
-        if ed_x == -1:
-            continue
-        else:
-            xs.append((nr - sample_int, zc_x * zw + ed_x * ew))
     nc = sample_int
     c_thresh = dimc / (sample_int * 3.0)
-    while nc < dimc:
-        data_y = FM(sobely, FM.VER, nc)
-        zc_y = zero_crossing(data_y)
-        ed_y = edge_centroid(data_y, FM(img, FM.VER, nc))
-        nc += sample_int
-        if ed_y == -1:
+    # ------------------------------------------------------------
+    # Gathering Data
+    hs = []
+    vs = []
+    while nr < dimr:
+        data_x = FM(sobelx, FM.HOR, nr)
+        if m < 3:
+            ec_x = edge_method(data_x, FM(img, FM.HOR, nr), p)
+        else:
+            ec_x = edge_method(data_x)
+        nr += sample_int
+        if ec_x == -1:
             continue
         else:
-            ys.append((nc - sample_int, zc_y * zw + ed_y * ew))
-    len_xs = len(xs)
-    len_ys = len(ys)
-    x_invalid = False
-    y_invalid = False
-    if len_xs < r_thresh:
-        x_invalid = True
-    if len_ys < c_thresh:
-        y_invalid = True
+            hs.append((nr - sample_int, ec_x))
 
-    center_x = -1 if x_invalid else sum([d[1] for d in xs]) / len_xs
-    center_y = -1 if y_invalid else sum([d[1] for d in ys]) / len_ys
+    while nc < dimc:
+        data_y = FM(sobely, FM.VER, nc)
+        if m < 3:
+            ec_y = edge_method(data_y, FM(img, FM.VER, nc), p)
+        else:
+            ec_y = edge_method(data_y)
+        nc += sample_int
+        if ec_y == -1:
+            continue
+        else:
+            vs.append((nc - sample_int, ec_y))
+    len_hs = len(hs)
+    len_vs = len(vs)
+
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    hxs = np.zeros(len_hs)
+    hys = np.zeros(len_hs)
+    for i in range(len_hs):
+        hxs[i] = hs[i][1]
+        hys[i] = hs[i][0]
+    vxs = np.zeros(len_vs)
+    vys = np.zeros(len_vs)
+    for i in range(len_vs):
+        vxs[i] = vs[i][0]
+        vys[i] = vs[i][1]
+    # hough_img = img_name_scheme.format(1)
+    # DATA RECORDING AND PROCESSING
+    x_valid = False
+    y_valid = False
+    stdh = -1
+    stdv = -1
+    valuesH = [d[1] for d in hs]
+    valuesV = [d[1] for d in vs]
+    line_a = HoughLine(x=hxs, data=valuesH)
+    line_b = HoughLine(x=vxs, data=valuesV)
+    if len_hs >= r_thresh:
+        x_valid = True
+        stdh = std_dev(valuesH)
+    if len_vs >= c_thresh:
+        y_valid = True
+        stdv = std_dev(valuesV)
+    if c == 1:
+        center_x = sum(valuesH) / len_hs if x_valid else -1
+        center_y = sum(valuesV) / len_vs if y_valid else -1
+    else:
+        if x_valid and y_valid:
+            center_x, center_y = HoughLine.intersect(line_a, line_b)
+        else:
+            center_x = sum(valuesH) / len_hs if x_valid else -1
+            center_y = sum(valuesV) / len_vs if y_valid else -1
+    timea = datetime.now()
+    usage = timea - timeb
+    print(usage)
     return center_x, center_y
 
 
-def read_truth(filename):
-    with open(filename) as truth:
-        TRUTH = {}
-        active = None
-        for line in truth:
-            meas = line.replace(',', ' ').split()
-            if len(meas) == 0:
-                pass
-            elif len(meas) == 1:
-                active = {}
-                TRUTH[meas[0]] = active
-
-            else:
-                tp = (int(meas[1]), int(meas[2]))
-                active[meas[0]] = tp
-    return TRUTH
-
-
-def error_calc(meas, truth):
-    E = 0
-    T = 0
-    F = 0
-    for m, vals in meas.items():
-        mx, my = vals
-        tx, ty = truth[m]
-        if tx == -2 or ty == -2:
-            pass
-        elif (mx == -1 and tx != -1) or (my == -1 and ty != -1):
-            F += 1
-        elif (mx != -1 and tx == -1) or (my != -1 and ty == -1):
-            T += 1
-        else:
-            E += sqrt((mx - tx) ** 2 + (my - ty) ** 2)
-    return {'E': E, 'T': T, 'F': F}
-
-
-def main():
-    folder = "../calib3/"
-    img_name = "img_59_{0}.jpg"
-    ns = folder + "img_%d_{0}.png"
-    # print("Center Detection yields: ")
-    #gaussian_kernel_expr('testpic', 'img_{0}')
-    for i in range(59, 60):
-        #if i in [29]:
-        if i == 0:
-            val = center_detect(ns % i, 5, debug=True)
-        else:
-            val = center_detect(ns % i, 5)
-        print(str(i), val)
-
-
-def case_calc():
-    hori_lower = 53.50 - 0.13
-    hori_upper = 53.50 + 0.13
-    verti_lower = 41.41 - 0.11
-    verti_upper = 41.41 + 0.11
-    height = 3
-    width = 4
-    print('hori_lower: {0}'.format(distance(width / 2, hori_lower / 2)))
-    print('hori_upper: {0}'.format(distance(width / 2, hori_upper / 2)))
-    print('verti_lower: {0}'.format(distance(height / 2, verti_lower / 2)))
-    print('verti_upper: {0}'.format(distance(height / 2, verti_upper / 2)))
-
-
-def distance(h, angle):
-    return 2.54 * (h / tan(radians(angle)))
-
-
 if __name__ == '__main__':
-    main()
+    folder = "../calib4/"
+    ns = folder + "img_%d_{0}.png"
+    for i in range(59, 80):
+        try:
+            val = center_detect(ns % i, 5)
+            print(val)
+        except AttributeError:
+            pass
+
