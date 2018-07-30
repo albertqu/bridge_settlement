@@ -864,13 +864,13 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, gk=9, ks=-1, m=0, 
     if len_hs >= r_thresh:
         x_valid = True
         hys, hxs = reg_pre_debias(hys, hxs)
+        line_a = HoughLine(x=hxs, data=hys)
     if len_vs >= c_thresh:
         y_valid = True
         vxs, vys = reg_pre_debias(vxs, vys)
+        line_b = HoughLine(x=vxs, data=vys)
     # ------------------------------------------------------------
     # ----- Following Modules Handles Hough Line Drawing ---------
-    line_a = HoughLine(x=hxs, data=hys)
-    line_b = HoughLine(x=vxs, data=vys)
     # ------------------------------------------------------------
     # DATA RECORDING AND PROCESSING
     if c == 1:
