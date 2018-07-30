@@ -12,8 +12,34 @@
     <ul class="bar">
         <li class="setview">{{ bridge.name }}</li>
         {% if reading %}
-        <li class="setview">{{ reading.x }}</li>
-        <li class="setview">{{ reading.y }}</li>
+        <!---<li class="setview">{{ reading.x }}</li>-->
+            <div class="dropdown">
+            {% for rx in readingsx %}
+                {% if forloop.first %}
+                    <button class="setview dropbtn">{{ rx }}</button>
+                    <div class="dropmenu">
+                {% elif forloop.last %}
+                    <li class="dropitem">{{ rx }}</li>
+                    </div>
+                {% else %}
+                    <li class="dropitem">{{ rx }}</li>
+                {% endif %}
+            {% endfor %}
+            </div>
+            <div class="dropdown">
+            {% for ry in readingsy %}
+                {% if forloop.first %}
+                    <button class="setview dropbtn">{{ ry }}</button>
+                    <div class="dropmenu">
+                {% elif forloop.last %}
+                    <li class="dropitem">{{ ry }}</li>
+                    </div>
+                {% else %}
+                    <li class="dropitem">{{ ry }}</li>
+                {% endif %}
+            {% endfor %}
+            </div>
+        <!----<li class="setview">{{ reading.y }}</li>-->
         {% else %}
         <li class="setview">{{ 0.0 }}</li>
         <li class="setview">{{ 0.0 }}</li>
@@ -55,7 +81,45 @@
             <li class="setview">No Repairs</li>
         {% endif %}
     </ul>
-    <div>
-        
-    </div>
+    <div id="myDiv"></div>
+    <script type='text/javascript'>
+        var calib_readings_json = "{{ readings }}";
+        var calib_readings = JSON.parse(calib_readings_json);
+        alert(calib_readings);
+        var doc = document.getElementById('myDiv');
+        doc.innerText = calib_readings;
+        var i;
+        var xs = [];
+        var ys = [];
+        var dates = [];
+        for (i=0; i < calib_readings.length; i++) {
+            xs[i] = calib_readings[i][0];
+            ys[i] = calib_readings[i][1];
+            dates[i] = calib_readings[i][2]
+        }
+        var trace1 = {
+            type: "scatter",
+            mode: "lines",
+            name: 'X displacements',
+            x: dates,
+            y: xs,
+            line: {color: '#17BECF'}};
+
+        var trace2 = {
+            type: "scatter",
+            mode: "lines",
+            name: 'Y displacements',
+            x: dates,
+            y: ys,
+            line: {color: '#7F7F7F'}
+        };
+
+        var data = [trace1,trace2];
+
+        var layout = {
+            title: "Bridge DATA"
+        };
+
+        Plotly.newPlot('myDiv', data, layout);
+    </script>
 {% endblock %}

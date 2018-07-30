@@ -39,20 +39,28 @@ def bridge_view(request, pk):
     ground_zero_x = ground_zero.x
     ground_zero_y = ground_zero.y
     calibrated = [(0.0, 0.0, None)] * len_reading
+    calibratedx = [0.0] * len_reading
+    calibratedy = [0.0] * len_reading
+    dates = [None] * len_reading
     for i in range(len_reading):
         curr = readings[i]
         dx = decimal_rep(calib_dp_to_di(curr.x - ground_zero_x))
         dy = decimal_rep(calib_dp_to_di(curr.y - ground_zero_y))
         dt = curr.time_taken
         calibrated[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
+        calibratedx[i] = dx
+        calibratedy[i] = dy
+    calib_json = json.dumps(calibrated)
     #print(calibrated[-10:])
     #json_readings = json.dumps(readings)
-
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),
                "bridge": bridge,
-               "reading": bridge.latest_reading()
+               "reading": bridge.latest_reading(),
+               "readings": calib_json,
+               "readingsx": calibratedx,
+               "readingsy": calibratedy
                }
     return render(request, "sensors/detail.html", context=context)
 

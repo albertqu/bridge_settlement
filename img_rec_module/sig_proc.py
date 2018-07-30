@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import csv
 from scipy.optimize import curve_fit
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
 
@@ -253,8 +254,7 @@ class FastDataMatrix2D:
         raise RuntimeError("You need the NEXT method!")
 
     def __getitem__(self, item):
-        return self._data[self._index, item + self.start] if self._ax == FastDataMatrix2D.HOR \
-            else self._data[item + self.start, self._index]
+        return self._data[self._index, item + self.start] if self._ax == FastDataMatrix2D.HOR else self._data[item + self.start, self._index]
 
     def __setitem__(self, key, value):
         if self._ax == FastDataMatrix2D.HOR:
@@ -586,7 +586,10 @@ def poly_fitting(data, img_data, padding=20):
         img_data.segmentize(start, end)
         y = img_data.extract_array()
     else:
-        y = np.array(img_data[start:end])
+        #y = np.array(img_data[start:end])
+        idata = np.zeros(end - start)
+        for i in range(start, end):
+            idata[i - start] = img_data[i]
     degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
     ind = np.argmin(cost)
     degree = degrees[ind]
@@ -618,7 +621,9 @@ def poly_fitting_params(data, img_data, padding=10):
         img_data.segmentize(start, end)
         y = img_data.extract_array()
     else:
-        y = np.array(img_data[start:end])
+        idata = np.zeros(end - start)
+        for i in range(start, end):
+            idata[i - start] = img_data[i]
     degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
     ind = np.argmin(cost)
     degree = degrees[ind]
@@ -650,7 +655,9 @@ def gaussian_fitting(data, img_data, padding=20):
         img_data.segmentize(start, end)
         idata = img_data.extract_array()
     else:
-        idata = np.array(img_data[start:end])
+        idata = np.zeros(end-start)
+        for i in range(start, end):
+            idata[i-start] = img_data[i]
     try:
         param = gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)])
     except RuntimeError:
@@ -674,7 +681,9 @@ def gaussian_fitting_params(data, img_data, padding=10):
         img_data.segmentize(start, end)
         idata = img_data.extract_array()
     else:
-        idata = np.array(img_data[start:end])
+        idata = np.zeros(end - start)
+        for i in range(start, end):
+            idata[i-start] = img_data[i]
     return gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)]), x
 
 
@@ -877,7 +886,7 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, gk=9, ks=-1, m=0, 
     return center_x, center_y
 
 
-"""
+
 def convergence_test_final(folder, ns):
     offset = '../'
     convergence = {}
@@ -943,5 +952,7 @@ def convergence_test_final(folder, ns):
     fwrite.close()
 
 if __name__ == '__main__':
-    convergence_test_final('calib4/', 'img_{0}')"""
+    convergence_test_final('calib4/', 'img_{0}')
+
+#print(center_detect('../calib4/img_59_{0}.png', 5))
 
