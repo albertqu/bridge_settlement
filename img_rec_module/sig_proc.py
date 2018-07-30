@@ -1,9 +1,6 @@
 import cv2
 import numpy as np
 from scipy.optimize import curve_fit
-import os
-import csv
-from datetime import datetime
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
 
 """ ===================================
@@ -59,8 +56,17 @@ class HoughLine:
         x1, x2 = x[0], x[-1]
         y1, y2 = data[0], data[-1]
         theta0 = theta_pred(x1, y1, x2, y2)
+        # print(degrees(theta0))
         p0 = [theta0, x1 * cos(theta0) + y1 * sin(theta0)]
         pm, vm = curve_fit(hough_line, x, data, p0=p0)
+        # data_pred = hough_line(x, *pm)
+        # print('PRED', data_pred)
+        # res = data_pred - data
+        # print("RES", res)
+        # stderr = np.linalg.norm(res, 2)
+        # print("ERR", stderr)
+        # rankerr = res / stderr
+        # print("Z", rankerr)
         if pm[1] < 0:
             pm[1] = -pm[1]
             pm[0] -= HC
@@ -283,6 +289,19 @@ def std_dev(data):
     return sqrt(std_dev / len_data)
 
 
+def reg_pre_debias(ind, data):
+    sd = np.std(data)
+    miu = np.mean(data)
+    debiased_data = []
+    debiased_ind = []
+    for i in range(len(data)):
+        dev = abs((data[i] - miu) / sd)
+        if dev < 2:
+            debiased_data.append(data[i])
+            debiased_ind.append(ind[i])
+    return debiased_ind, debiased_data
+
+
 # Polynomial Regression Tools 137-171
 def poly_data_matrix(input_data, degree):
     # degree is the degree of the polynomial you plan to fit the data with
@@ -345,7 +364,10 @@ def gauss_reg(x, y, p0):
     pred = gauss_hat(maxi, a, b, c_s)
     real = y[maxi]
     a = real / pred // 1000000000 * 10"""
+    # timeb = datetime.now()
     param, vm = curve_fit(gauss_hat, x, y, p0=p0)
+    # timea = datetime.now()
+    # print(timea - timeb)
     return param
 
 
@@ -394,7 +416,7 @@ def max_min(data):
 def edge_max_min(data):
     # Returns a *safe* edge maxi, mini for the data
     # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
-    width_thres = 120
+    width_thres = 90
     value_thres = 20
     maxi = data[0]
     max_ind = 0
@@ -525,7 +547,7 @@ def extract_extrema(data):
 
 
 # CENTROID METHOD FOR EDGE CENTER FINDING
-def edge_centroid(data, img_data, padding=10):
+def edge_centroid(data, img_data, padding=20):
     # With Gaussian Blur might achieve the best performance
     try:
         start, end = edge_preprocess(data, padding)
@@ -553,7 +575,7 @@ def centroid_seg(data, start, end):
 
 
 # POLYNOMIAL FITTING
-def poly_fitting(data, img_data, padding=10):
+def poly_fitting(data, img_data, padding=20):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
     try:
         start, end = edge_preprocess(data, padding)
@@ -578,7 +600,7 @@ def poly_fitting(data, img_data, padding=10):
 def poly_fitting_params(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
     maxi, mini = max_min(data)
-    width_thres = 120
+    width_thres = 90
     value_thres = 20
     if data[maxi] < value_thres or mini - maxi > width_thres:
         print(data[maxi], mini, maxi)
@@ -616,7 +638,7 @@ def degree_register(elem):
 
 
 # GAUSSIAN FITTING
-def gaussian_fitting(data, img_data, padding=10):
+def gaussian_fitting(data, img_data, padding=20):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
     try:
         maxi, mini = edge_max_min(data)
@@ -639,7 +661,7 @@ def gaussian_fitting(data, img_data, padding=10):
 def gaussian_fitting_params(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
     maxi, mini = max_min(data)
-    width_thres = 120
+    width_thres = 90
     value_thres = 20  # TODO: CONSOLIDATE THIS VALUE
     if data[maxi] < value_thres or mini - maxi > width_thres:
         print(data[maxi], mini, maxi)
@@ -671,41 +693,9 @@ def gauss_bg_deduce(x, img_data):
     return x, rem_gauss, new_y
 
 
-def sobel_process(imgr, gks, sig):
-    gksize = (gks, gks)
-    sigmaX = sig
-    blur = cv2.GaussianBlur(imgr, gksize, sigmaX)
-    # cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
-    if len(imgr.shape) == 3:
-        img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
-    else:
-        img = blur
-    # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
-    """x = np.array(range(dimc))
-    #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
-    y = np.array([img.item(dimr // 2, c) for c in x])
-    a1, b1, c_s1 = gauss_reg(x, y)
-
-    x2 = np.array(range(dimr))
-    y2 = np.array([img.item(r, dimc // 2) for r in x2])
-    a2, b2, c_s2 = gauss_reg(x2, y2)
-    rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
-    img = img - rem_gauss
-    cv2.imshow("denoise", img)
-    y_hat = gauss_hat(x, a1, b1, c_s1)
-    plt.figure(figsize=(16, 8))
-    plt.plot(x, y, 'b-', x, y_hat, 'r-')
-    plt.show()
-    plt.close()
-    plt.figure(figsize=(16,8))
-    plt.plot(x, y-y_hat, 'b-')
-    plt.show()"""
-
-    # IMAGE PROCESSING
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
-    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
-    return img, sobelx, sobely
-
+def significance_test(data, val):
+    """Outputs whether the maximum or minimum value is a significant value."""
+    return val in extract_extrema(data)[0] or val in extract_extrema(data)[1]
 
 
 def edge_detect_expr(edges, original):
@@ -786,53 +776,6 @@ def img_add(dest, src):
             dest[i][j] += src[i][j]
 
 
-
-
-""" ===================================
-    ====== DATA RECORDING HELPER ======
-    =================================== """
-
-
-# 1. Try Noise Reduction:
-# ---- 1.1 Reduction By Averaging, without FastNIMEANS  ~~ GOOD
-# ---- 1.2 Reduction By FastNIMEANS                     ~~ INFERIOR
-# ---- 1.3 Reduction By Combination                     ~~ INFERIOR
-# ---- 1 NOTE: USE PLOTTING OF ORIGINAL GRAPH TO SEE RESULT
-# 2. Try Di-Axial Scharr Kernel
-# ---- 2.1 Add To Name Scheme, record graphs and compare them
-# ---- 2 NOTE: GRAPH TO SAVE: 4-CONTRAST, TRANSITION PLOTS
-# 3. Optimizing Data Processing:
-# ---- 3.1 Marking point as edge maxima and minima according to STD Dev values
-# ---- 3.2 Taking Sequential Samples
-# ---- 3.3 Explore Thresholding Techniques
-
-
-def register(img):
-    lval = []
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            if img.item(i, j) > 250:
-                lval.append((i, j, img.item(i, j)))
-    print(lval)
-
-
-""" TEST GAUSSIAN BLUR'S influence on noise distribution:
-    Method:
-        1. Preliminary
-            1. Generate a random noise matrix with n * n, change shape to a vector
-            2. Gaussian blur applied, change shape to a vector
-            3. Compare noise level
-        2. Secondary
-            1. Generate a Gaussian / Cosine Matrix and add random noise matrix
-            2. Gaussian blur applied
-            3. Compare a randomly selected row of each one
-"""
-
-
-
-
-
-
 FM = FastDataMatrix2D
 
 
@@ -841,10 +784,12 @@ def folder_to_imgs(img_name_scheme, num_sample):
     return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample + 1)]
 
 
-def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=0, p=10, b=1, c=0):
+# The image taken is flipped horizontally, result x should be img.shape[1] - x
+# The image sometimes has two peaks, try experimenting with different gaussian kernels
+def center_detect(img_name_scheme, num_sample, sample_int=50, gk=9, ks=-1, m=0, p=20,
+                       b=1, c=0):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    timeb = datetime.now()
     imgr = test_noise_reduce(img_name_scheme, num_sample)[0]
     dimr = imgr.shape[0]
     dimc = imgr.shape[1]
@@ -892,8 +837,8 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
             vs.append((nc - sample_int, ec_y))
     len_hs = len(hs)
     len_vs = len(vs)
-
-    # ----- Following Modules Handles Hough Line Drawing ---------
+    # ------------------------------------------------------------
+    # --------------- PRE-CHECK DATA VALUES ----------------------
     hxs = np.zeros(len_hs)
     hys = np.zeros(len_hs)
     for i in range(len_hs):
@@ -904,46 +849,99 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
     for i in range(len_vs):
         vxs[i] = vs[i][0]
         vys[i] = vs[i][1]
-    # hough_img = img_name_scheme.format(1)
-    # DATA RECORDING AND PROCESSING
     x_valid = False
     y_valid = False
-    stdh = -1
-    stdv = -1
-    valuesH = [d[1] for d in hs]
-    valuesV = [d[1] for d in vs]
+    # OUTLIER DETECTION TODO: OPTIMIZE, THIS IS NAIVE
     if len_hs >= r_thresh:
         x_valid = True
-        line_a = HoughLine(x=hxs, data=hys)
-        stdh = std_dev(valuesH)
+        hys, hxs = reg_pre_debias(hys, hxs)
     if len_vs >= c_thresh:
         y_valid = True
-        line_b = HoughLine(x=vxs, data=vys)
-        stdv = std_dev(valuesV)
+        vxs, vys = reg_pre_debias(vxs, vys)
+    # ------------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    line_a = HoughLine(x=hxs, data=hys)
+    line_b = HoughLine(x=vxs, data=vys)
+    # ------------------------------------------------------------
+    # DATA RECORDING AND PROCESSING
     if c == 1:
-        center_x = sum(valuesH) / len_hs if x_valid else -1
-        center_y = sum(valuesV) / len_vs if y_valid else -1
+        center_x = sum(hxs) / len_hs if x_valid else -1
+        center_y = sum(vys) / len_vs if y_valid else -1
     else:
         if x_valid and y_valid:
             center_x, center_y = HoughLine.intersect(line_a, line_b)
         else:
-            center_x = sum(valuesH) / len_hs if x_valid else -1
-            center_y = sum(valuesV) / len_vs if y_valid else -1
-    timea = datetime.now()
-    usage = timea - timeb
-    print(usage)
+            center_x = sum(hxs) / len_hs if x_valid else -1
+            center_y = sum(vys) / len_vs if y_valid else -1
+    # ---------------------------------------------------------
     return center_x, center_y
 
 
+"""
+def convergence_test_final(folder, ns):
+    offset = '../'
+    convergence = {}
+    variations = []
+    startNP = 59
+    startP = 80
+    endP = 193
+    ms = range(3)
+    fwrite = open('meas/convergence.csv', 'w')
+    cwriter = csv.writer(fwrite)
+    cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
+    for m in ms:
+        cwriter.writerow([str(m)])
+        # Consistency Cycled
+        pv = 0
+        pvs = 0
+        rcount = 0
+        cvx = np.zeros(4)
+        cvy = np.zeros(4)
+        # print(g)
+        for i in range(startNP, startP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y = center_detect(fpath + imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y)])
+                # CONVERGENCE
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+        for i in range(startP, endP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y = center_detect(fpath + imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y)])
+                # CONVERGENCE
+                # Record x, y, check rcount, refresh CONSISTENCY
+                cvx[rcount] = x
+                cvy[rcount] = y
+                rcount += 1
+                if rcount == 4:
+                    pv += np.var(cvx) + np.var(cvy)
+                    pvs += 1
+                    rcount = 0
+                    cvx = np.zeros(4)
+                    cvy = np.zeros(4)
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+                # print(str(i), val)
+        msepv = sqrt(pv / pvs)
+        cvg = {'PicConsistency': msepv}
+        convergence[m] = cvg
+        variations.append(msepv)
+    print(convergence)
+    fwrite.close()
+
 if __name__ == '__main__':
-    folder = "../testpic/"
-    ns = folder + "img_%d_{0}.png"
-    for i in range(1, 25):
-        """try:
-            val = center_detect(ns % i, 5)
-            print(val)
-        except AttributeError:
-            print('no ' + ns % i)
-            pass"""
-        val = center_detect(ns % i, 3)
-        print(val)
+    convergence_test_final('calib4/', 'img_{0}')"""
+

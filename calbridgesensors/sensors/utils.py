@@ -1,7 +1,8 @@
 import re
 import json
-from .apps import CONNECTION_PASSWORD
+from .apps import CONNECTION_PASSWORD, CALIB_VAL
 from dateutil import parser
+from datetime import datetime
 
 
 def name_validate(s):
@@ -47,6 +48,24 @@ def code_expr(time_sign):
 
 def succinct_time_str(dt):
     return str(dt)[:19]
+
+
+def calib_dp_to_di(dp):
+    return dp / CALIB_VAL
+
+
+def decimal_rep(n):
+    return "%.4f" % n
+
+
+def parse_db_time_string(time_string):
+    date = datetime.strptime(time_string.split('.')[0], '%Y-%m-%d %H:%M:%S')  # String to object
+    return datetime.strftime(date, '%d %b %Y %H:%M:%S')
+
+
+def parse_db_time(db_time):
+    date = datetime.strftime(db_time, '%Y-%m-%d %H:%M:%S')
+    return date
 
 
 

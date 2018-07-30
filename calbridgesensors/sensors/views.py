@@ -5,7 +5,7 @@ from django.views.generic import DetailView
 from django.http import HttpResponse
 from django.views.generic.base import TemplateView
 from .models import Bridge, BrokenFlag, Reading
-from .utils import verify_request
+from .utils import verify_request, calib_dp_to_di, decimal_rep, parse_db_time
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 import json
 
@@ -33,6 +33,21 @@ class SensorsHomeView(LoginRequiredMixin, TemplateView):
 @login_required(login_url='/accounts/login/')
 def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
+    readings = bridge.reading_set.all()
+    len_reading = len(readings)
+    ground_zero = readings[len_reading - 1]
+    ground_zero_x = ground_zero.x
+    ground_zero_y = ground_zero.y
+    calibrated = [(0.0, 0.0, None)] * len_reading
+    for i in range(len_reading):
+        curr = readings[i]
+        dx = decimal_rep(calib_dp_to_di(curr.x - ground_zero_x))
+        dy = decimal_rep(calib_dp_to_di(curr.y - ground_zero_y))
+        dt = curr.time_taken
+        calibrated[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
+    #print(calibrated[-10:])
+    #json_readings = json.dumps(readings)
+
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),

@@ -65,9 +65,17 @@ class HoughLine:
         x1, x2 = x[0], x[-1]
         y1, y2 = data[0], data[-1]
         theta0 = theta_pred(x1, y1, x2, y2)
-        print(degrees(theta0))
+        #print(degrees(theta0))
         p0 = [theta0, x1 * cos(theta0) + y1 * sin(theta0)]
         pm, vm = curve_fit(hough_line, x, data, p0=p0)
+        #data_pred = hough_line(x, *pm)
+        #print('PRED', data_pred)
+        #res = data_pred - data
+        #print("RES", res)
+        #stderr = np.linalg.norm(res, 2)
+        #print("ERR", stderr)
+        #rankerr = res / stderr
+        #print("Z", rankerr)
         if pm[1] < 0:
             pm[1] = -pm[1]
             pm[0] -= HC
@@ -284,6 +292,19 @@ def std_dev(data):
     for i in range(len_data):
         std_dev += (data[i] - mean) ** 2
     return sqrt(std_dev / len_data)
+
+
+def reg_pre_debias(ind, data):
+    sd = np.std(data)
+    miu = np.mean(data)
+    debiased_data = []
+    debiased_ind = []
+    for i in range(len(data)):
+        dev = abs((data[i] - miu) / sd)
+        if dev < 2:
+            debiased_data.append(data[i])
+            debiased_ind.append(ind[i])
+    return debiased_ind, debiased_data
 
 
 # Polynomial Regression Tools 137-171
@@ -1480,9 +1501,6 @@ def test(folder, imgn):
         blurimgy = FM(img, FM.VER, c_int)
         gx, bgx, deducedx = gauss_bg_deduce(xh, imgx)
         gy, bgy, deducedy = gauss_bg_deduce(xv, imgy)
-
-
-
         # print(extract_extrema(y_s_x))
         # print(extract_extrema(y_s_y))
         # EDGE DETECTION
@@ -1637,7 +1655,7 @@ def center_detect_old(img_name_scheme, num_sample, sample_int=50):
 # The image sometimes has two peaks, try experimenting with different gaussian kernels
 
 
-def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=0, p=10, b=1, c=0, hough=True):
+def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, debug=False, gk=9, ks=-1, m=0, p=20, b=1, c=0, hough=True):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     imgr = test_noise_reduce(folder_path + img_name_scheme, num_sample)[0]
@@ -1687,16 +1705,7 @@ def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, 
             vs.append((nc - sample_int, ec_y))
     len_hs = len(hs)
     len_vs = len(vs)
-    # ------------------------------------------------------------
-    # DEBUG MODULE
-    if debug:
-        print((dimr, dimc))
-        print("imgX:", hs)
-        print("imgY:", vs)
-        compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), color_map='gray')
-        test(folder_path, img_name_scheme)
-    # ------------------------------------------------------------
-    # ----- Following Modules Handles Hough Line Drawing ---------
+    # --------------- PRE-CHECK DATA VALUES ----------------------
     hxs = np.zeros(len_hs)
     hys = np.zeros(len_hs)
     for i in range(len_hs):
@@ -1707,7 +1716,27 @@ def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, 
     for i in range(len_vs):
         vxs[i] = vs[i][0]
         vys[i] = vs[i][1]
+    x_valid = False
+    y_valid = False
+    stdh = -1
+    stdv = -1
+    #valuesH = [d[1] for d in hs]
+    #valuesV = [d[1] for d in vs]
+    if len_hs >= r_thresh:
+        x_valid = True
+        stdh = std_dev(hxs)
+    if len_vs >= c_thresh:
+        y_valid = True
+        stdv = std_dev(vys)
     #hough_img = img_name_scheme.format(1)
+
+    # OUTLIER DETECTION TODO: OPTIMIZE, THIS IS NAIVE
+    if x_valid:  # NAIVE
+        hys, hxs = reg_pre_debias(hys, hxs)
+    if y_valid:
+        vxs, vys = reg_pre_debias(vxs, vys)
+    # ---------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
     if hough:
         hough_img = folder_path + img_name_scheme.format(1)
         print(hough_img)
@@ -1726,31 +1755,38 @@ def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, 
         print(namespace)
         cv2.imwrite(namespace, img_h)
     else:
+        #print("MEAS", hys)
         line_a = HoughLine(x=hxs, data=hys)
+        #print("MEAS", vys)
         line_b = HoughLine(x=vxs, data=vys)
+    # ------------------------------------------------------------
+    # DEBUG MODULE
+    if debug:
+        print((dimr, dimc))
+        print("imgX(BEFORE):", hs)
+        print("imgX:", list(zip(hys, hxs)))
+        print("imgY(BEFORE):", vs)
+        print("imgY:", list(zip(vxs, vys)))
+        compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), color_map='gray')
+        test(folder_path, img_name_scheme)
     # --------------------------------------------------------
     # DATA RECORDING AND PROCESSING
-    x_valid = False
-    y_valid = False
-    stdh = -1
-    stdv = -1
-    valuesH = [d[1] for d in hs]
-    valuesV = [d[1] for d in vs]
     if len_hs >= r_thresh:
         x_valid = True
-        stdh = std_dev(valuesH)
+        stdh = std_dev(hxs)
     if len_vs >= c_thresh:
         y_valid = True
-        stdv = std_dev(valuesV)
+        stdv = std_dev(vys)
     if c == 1:
-        center_x = sum(valuesH) / len_hs if x_valid else -1
-        center_y = sum(valuesV) / len_vs if y_valid else -1
+        center_x = sum(hxs) / len_hs if x_valid else -1
+        center_y = sum(vys) / len_vs if y_valid else -1
     else:
         if x_valid and y_valid:
             center_x, center_y = HoughLine.intersect(line_a, line_b)
         else:
-            center_x = sum(valuesH) / len_hs if x_valid else -1
-            center_y = sum(valuesV) / len_vs if y_valid else -1
+            center_x = sum(hxs) / len_hs if x_valid else -1
+            center_y = sum(vys) / len_vs if y_valid else -1
+    # ---------------------------------------------------------
     return center_x, center_y, stdh, stdv
 
 
@@ -2117,6 +2153,72 @@ def convergence_test(folder, ns):
     fwrite.close()
 
 
+def convergence_test_final(folder, ns):
+    offset = '../'
+    convergence = {}
+    variations = []
+    startNP = 59
+    startP = 80
+    endP = 193
+    ms = range(3)
+    fwrite = open('meas/convergence.csv', 'w')
+    cwriter = csv.writer(fwrite)
+    cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
+    for m in ms:
+        cwriter.writerow([str(m)])
+        # Consistency Cycled
+        pv = 0
+        pvs = 0
+        rcount = 0
+        cvx = np.zeros(4)
+        cvy = np.zeros(4)
+        # print(g)
+        for i in range(startNP, startP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y = center_detect(fpath + imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y)])
+                # CONVERGENCE
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+        for i in range(startP, endP):
+            img_name = ns.format(i)
+            fpath = offset + folder
+            imgfile = "%s_{0}.png" % img_name
+            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+            try:
+                x, y = center_detect(fpath + imgfile, 5, m=m)
+                # PUT IN CSV
+                cwriter.writerow([str(i), str(x), str(y)])
+                # CONVERGENCE
+                # Record x, y, check rcount, refresh CONSISTENCY
+                cvx[rcount] = x
+                cvy[rcount] = y
+                rcount += 1
+                if rcount == 4:
+                    pv += np.var(cvx) + np.var(cvy)
+                    pvs += 1
+                    rcount = 0
+                    cvx = np.zeros(4)
+                    cvy = np.zeros(4)
+            except AttributeError:
+                print('No {0}'.format(fpath + imgfile))
+                pass
+                # print(str(i), val)
+        msepv = sqrt(pv / pvs)
+        cvg = {'PicConsistency': msepv}
+        convergence[m] = cvg
+        variations.append(msepv)
+    print(convergence)
+    fwrite.close()
+""""""
+
+
 def parameter_convert(method, padding, blur):
     return method + 2 * padding + blur * 100
 
@@ -2133,12 +2235,16 @@ def main():
     """for i in range(59, 193):
         #if i in [29]:
         try:
-            if i in range(133, 145) or i in [59, 60148, 173, 175]:
+            if i in [133, 134, 157, 158, 159, 160]:
+                print(i)
                 val = center_detect_test(folder, ns % i, 5, debug=True, hough=False)
                 print(str(i), val)
-        except TypeError:
+            #val = center_detect_test(folder, ns % i, 5, hough=False)
+            #print(str(i), val)
+        except AttributeError:
             print('No image {0}!'.format(i))
         print('------------------------------------------------------')"""
+    # convergence_test_final('calib4/', 'img_{0}')
 
 
 def case_calc():
@@ -2262,4 +2368,4 @@ else:
     y = np.array([img_rec.rel_lumin(img, r, p) for r in x])
 """
 
-
+CALK = 166.1861
