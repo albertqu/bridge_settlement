@@ -6,6 +6,7 @@ from scipy.optimize import least_squares
 import heapq
 from decimal import Decimal
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
+import matplotlib.pyplot as plt
 
 """ ===================================
 ========== ANALYTIC GEOMETRY ==========
@@ -202,7 +203,13 @@ def angle_interp(s, c):
 def normalize_angle(angle):
     res = angle - (angle // FC) * FC
     return res
-
+    """
+    if QC < res < HC:
+        return res + HC
+    elif HC <= res <= TQC:
+        return res - HC
+    else:
+        return res"""
 
 
 def theta_pred(x1, y1, x2, y2):
@@ -1043,6 +1050,21 @@ def img_add(dest, src):
             dest[i][j] += src[i][j]
 
 
+"""======================================
+========== VISUALIZATION UTIL ===========
+========================================= """
+
+
+def visualize_centers(img, centers_v, centers_h, ax):
+    xsv = [c[1] for c in centers_v]
+    ysv = [c[0] for c in centers_v]
+    xsh = [c[1] for c in centers_h]
+    ysh = [c[0] for c in centers_h]
+    ax.imshow(img, cmap='gray')
+    ax.scatter(xsv, ysv, facecolor='blue', linewidths=1)
+    ax.scatter(xsh, ysh, facecolor='red', linewidths=1)
+
+
 FM = FastDataMatrix2D
 
 
@@ -1081,38 +1103,257 @@ def center_detect_hough(img):
     return ct
 
 
-def center_detect(ins, sample_int=30, gk=9, ks=-1, l='soft_l1'):
+# The image taken is flipped horizontally, result x should be img.shape[1] - x
+# The image sometimes has two peaks, try experimenting with different gaussian kernels
+def center_detect_test(img_name, sample_int=30, gk=9, ks=-1):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    ambi, laser = cv2.imread(ins.format(0), 0), cv2.imread(ins.format(1), 0)
-    res = image_diff(laser, ambi)
-    centers_v, centers_h = gather_all(res, sample_int, gk, ks)
+    # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
+    # TODO: 1. CENTER_VISUALIZATION WITH LINE DRAWN
+    # TODO: 2. ERROR BEFORE AND AFTER
+    imgr = cv2.imread(img_name, 0)
+    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
     centers_v, centers_h = np.array(centers_v), np.array(centers_h)
     centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
     centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+    loss_regs = []
+    loss_types = ['huber', 'soft_l1', 'arctan', 'linear', 'cauchy']
+    for loss in loss_types:
+        print(loss)
+        line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=loss)
+        vp1_av, vp2_av = line_v.point_gen()
+        hp1_av, hp2_av = line_h.point_gen()
+        zv_err_av, zv_err_ap = line_v.debias()
+        zh_err_av, zh_err_ap = line_h.debias()
+        loss_regs.append(np.mean(zh_err_ap) ** 2 + np.mean(zv_err_ap) ** 2)
+        print(loss_regs[-1])
+        xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
+        xh_av, xh_ap = np.arange(len(zh_err_av)), np.arange(len(zh_err_ap))
+        hp1_ap, hp2_ap = line_h.point_gen()
+        vp1_ap, vp2_ap = line_v.point_gen()
+        cenhs = list(zip(line_h.data, line_h.x))
+        cenvs = list(zip(line_v.data, line_v.x))
+        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1)
+        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1)
+
+        fig1 = plt.figure(figsize=(20, 10))
+        ax1 = fig1.add_subplot(121)
+        visualize_centers(imgr, centers_v, centers_h, ax1)
+        ax1.set_title('Before')
+        ax2 = fig1.add_subplot(122)
+        visualize_centers(imgr, cenvs, cenhs, ax2)
+        ax2.set_title('After')
+        fig2 = plt.figure(figsize=(20, 10))
+        ax3 = fig2.add_subplot(211)
+        ax3.plot(xh_av, zh_err_av, 'mo-', xh_ap, zh_err_ap, 'bo-')
+        ax3.set_title('HOR Loss Avant et Apres')
+        ax3.legend(['Avant', 'Apres'])
+        ax4 = fig2.add_subplot(212)
+        ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
+        ax4.set_title('VER Loss Avant et Apres')
+        ax4.legend(['Avant', 'Apres'])
+        plt.show()
+    plt.figure()
+    plt.plot(range(5), loss_regs, 'b-')
+    plt.xticks(range(5), loss_types)
+    plt.show()
+    return center_detect_hough(imgr)
+
+
+def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
+    # TODO: 1. CENTER_VISUALIZATION WITH LINE DRAWN
+    # TODO: 2. ERROR BEFORE AND AFTER
+    imgr = cv2.imread(folder_path+img_name, 0)
+    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
+    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
+    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
+    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
+    if visual:
+        namespace = 'robust_reg/{0}{1}_{2}'.format(folder_path[3:], l, img_name)
+        vp1_av, vp2_av = line_v.point_gen()
+        hp1_av, hp2_av = line_h.point_gen()
     zv_err_av, zv_err_ap = line_v.debias()
     zh_err_av, zh_err_ap = line_h.debias()
+
+    if visual:
+        xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
+        xh_av, xh_ap = np.arange(len(zh_err_av)), np.arange(len(zh_err_ap))
+        hp1_ap, hp2_ap = line_h.point_gen()
+        vp1_ap, vp2_ap = line_v.point_gen()
+        cenhs = list(zip(line_h.data, line_h.x))
+        cenvs = list(zip(line_v.data, line_v.x))
+        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1)
+        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1)
+
+        fig1 = plt.figure(figsize=(20, 10))
+        ax1 = fig1.add_subplot(121)
+        visualize_centers(imgr, centers_v, centers_h, ax1)
+        ax1.set_title('Before')
+        ax2 = fig1.add_subplot(122)
+        visualize_centers(imgr, cenvs, cenhs, ax2)
+        ax2.set_title('After')
+        fig2 = plt.figure(figsize=(20, 10))
+        ax3 = fig2.add_subplot(211)
+        ax3.plot(xh_av, zh_err_av, 'mo-', xh_ap, zh_err_ap, 'bo-')
+        ax3.set_title('HOR Loss Before and After')
+        ax3.legend(['Before', 'After'])
+        ax4 = fig2.add_subplot(212)
+        ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
+        ax4.set_title('VER Loss Before and After')
+        ax4.legend(['Before', 'After'])
+        fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
+        fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
     return HoughLine.intersect(line_h, line_v)
 
 
-def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
+def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False,
+                        folder_path="../", img_name='.png'):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
     centers_v, centers_h = np.array(centers_v), np.array(centers_h)
     centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
     centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
+    if visual:
+        namespace = 'robust_reg/{0}{1}_{2}'.format(folder_path[3:], l, img_name)
+        vp1_av, vp2_av = line_v.point_gen()
+        hp1_av, hp2_av = line_h.point_gen()
     zv_err_av, zv_err_ap = line_v.debias()
     zh_err_av, zh_err_ap = line_h.debias()
+
+    if visual:
+        xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
+        xh_av, xh_ap = np.arange(len(zh_err_av)), np.arange(len(zh_err_ap))
+        hp1_ap, hp2_ap = line_h.point_gen()
+        vp1_ap, vp2_ap = line_v.point_gen()
+        cenhs = list(zip(line_h.data, line_h.x))
+        cenvs = list(zip(line_v.data, line_v.x))
+        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1)
+        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1)
+
+        fig1 = plt.figure(figsize=(20, 10))
+        ax1 = fig1.add_subplot(121)
+        visualize_centers(imgr, centers_v, centers_h, ax1)
+        ax1.set_title('Before')
+        ax2 = fig1.add_subplot(122)
+        visualize_centers(imgr, cenvs, cenhs, ax2)
+        ax2.set_title('After')
+        fig2 = plt.figure(figsize=(20, 10))
+        ax3 = fig2.add_subplot(211)
+        ax3.plot(xh_av, zh_err_av, 'mo-', xh_ap, zh_err_ap, 'bo-')
+        ax3.set_title('HOR Loss Before and After')
+        ax3.legend(['Before', 'After'])
+        ax4 = fig2.add_subplot(212)
+        ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
+        ax4.set_title('VER Loss Before and After')
+        ax4.legend(['Before', 'After'])
+        fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
+        fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
     return HoughLine.intersect(line_h, line_v)
+
+
+def center_detect_old(img, sample_int=50, gk=9, ks=-1, m=0, p=20,
+                       b=1, c=0):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    imgr = img
+    dimr = imgr.shape[0]
+    dimc = imgr.shape[1]
+    # Image Processing
+    gksize = (gk, gk)
+    sigmaX = 0
+    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    # ------------------------------------------------------------
+    # Parameter Setting
+    METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
+               3: zero_crossing, 4: edge_converge_base, 5: edge_converge_extreme}
+    edge_method = METHODS[m]
+    nr = sample_int
+    r_thresh = dimr / (sample_int * 3.0)
+    nc = sample_int
+    c_thresh = dimc / (sample_int * 3.0)
+    # ------------------------------------------------------------
+    # Gathering Data
+    hs = []
+    vs = []
+    while nr < dimr:
+        data_x = FM(sobelx, FM.HOR, nr)
+        if m < 3:
+            ec_x = edge_method(data_x, FM(img, FM.HOR, nr), p)
+        else:
+            ec_x = edge_method(data_x)
+        nr += sample_int
+        if ec_x == -1:
+            continue
+        else:
+            hs.append((nr - sample_int, ec_x))
+
+    while nc < dimc:
+        data_y = FM(sobely, FM.VER, nc)
+        if m < 3:
+            ec_y = edge_method(data_y, FM(img, FM.VER, nc), p)
+        else:
+            ec_y = edge_method(data_y)
+        nc += sample_int
+        if ec_y == -1:
+            continue
+        else:
+            vs.append((nc - sample_int, ec_y))
+    len_hs = len(hs)
+    len_vs = len(vs)
+    # ------------------------------------------------------------
+    # --------------- PRE-CHECK DATA VALUES ----------------------
+    hxs = np.zeros(len_hs)
+    hys = np.zeros(len_hs)
+    for i in range(len_hs):
+        hxs[i] = hs[i][1]
+        hys[i] = hs[i][0]
+    vxs = np.zeros(len_vs)
+    vys = np.zeros(len_vs)
+    for i in range(len_vs):
+        vxs[i] = vs[i][0]
+        vys[i] = vs[i][1]
+    x_valid = False
+    y_valid = False
+    # OUTLIER DETECTION   TODO: OPTIMIZE, THIS IS NAIVE
+    if len_hs >= r_thresh:
+        x_valid = True
+        hys, hxs = reg_pre_debias(hys, hxs)
+        line_a = HoughLine(x=hxs, data=hys)
+    if len_vs >= c_thresh:
+        y_valid = True
+        vxs, vys = reg_pre_debias(vxs, vys)
+        line_b = HoughLine(x=vxs, data=vys)
+    # ------------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    # ------------------------------------------------------------
+    # DATA RECORDING AND PROCESSING
+    if c == 1:
+        center_x = sum(hxs) / len_hs if x_valid else -1
+        center_y = sum(vys) / len_vs if y_valid else -1
+    else:
+        if x_valid and y_valid:
+            center_x, center_y = HoughLine.intersect(line_a, line_b)
+        else:
+            center_x = sum(hxs) / len_hs if x_valid else -1
+            center_y = sum(vys) / len_vs if y_valid else -1
+    # ---------------------------------------------------------
+    return center_x, center_y
 
 
 def expr2(series):
     folder = '../calib5/'
     ns = 'img_{0}.png'
-    ins = folder + ns
+    ins = folder + 'img_{0}.png'
     repertoire = []
     i = 0
     while i < len(series):
@@ -1121,7 +1362,7 @@ def expr2(series):
             res = image_diff(laser, ambi)
         except:
             print(ins.format(series[i]))
-        repertoire.append(center_detect_test(res))
+        repertoire.append(center_detect_invar(res, visual=True, folder_path=folder, img_name=ns.format(series[i+1])))
         i+= 2
     for i, ct in enumerate(repertoire):
         print((series[2*i], series[2*i+1]), ct)
@@ -1200,11 +1441,44 @@ def convergence_test_final(folder, ns):
         variations.append(msepv)
     print(convergence)
     fwrite.close()
+    plt.figure(figsize=(20, 10))
+    plt.style.use(['seaborn-dark', 'seaborn-paper'])
+    plt.subplot(111)
+    plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+    plt.xticks(ls, loss_types)
+    plt.ylabel('deviations(+/-px)')
+    plt.xlabel('loss functions')
+    plt.title('Convergence By Loss Function Rho')
+    plt.show()
 
 if __name__ == '__main__':
     #print(center_detect('../calib4/img_59_{0}.png', 5))
     #convergence_test_final('calib4/', 'img_{0}')
     repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
+    """skewed = '../skewed/'
+    bright = '../bright/'
+    imgn = 'img_{0}_1.png'
+    #center_detect('../calib4/', 'img_113_1.png', visual=True)
+    for i in range(90, 96):
+        ns = imgn.format(i)
+        print(skewed + ns)
+        print(center_detect(skewed, ns, visual=True))
+
+    ns = imgn.format(81)
+    print(bright + ns)
+    try:
+        print(center_detect(bright, ns, visual=True))
+    except:
+        print('NON IDEE')
+
+    for i in range(193, 195):
+        ns = imgn.format(i)
+        print(bright + ns)
+        try:
+            print(center_detect(bright, ns, visual=True))
+        except:
+            print('NON IDEE')"""
+
 
 
 

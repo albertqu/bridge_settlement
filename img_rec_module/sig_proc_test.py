@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from mpl_toolkits.mplot3d import Axes3D
 #from img_rec_module import img_rec
 from random import randint
 import os
@@ -76,10 +77,10 @@ class HoughLine:
         #print("ERR", stderr)
         #rankerr = res / stderr
         #print("Z", rankerr)
-        if pm[1] < 0:
+        """if pm[1] < 0:
             pm[1] = -pm[1]
             pm[0] -= HC
-            #pm[0] = 2 * np.pi
+            #pm[0] = 2 * np.pi"""
         angle = normalize_angle(pm[0])
         self._t = angle
         self._r = pm[1]
@@ -398,6 +399,7 @@ def hough_data_matrix(x, y):
 """ =======================================
 ========= EDGE DETECTION UTILS ============
 =========================================== """
+# TODO: CHANGED!!!
 
 
 # Generic Helper
@@ -421,6 +423,7 @@ def max_min(data):
 def edge_max_min(data):
     # Returns a *safe* edge maxi, mini for the data
     # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
+    # TODO: MADE CHANGES, BUT THE WIDTH CHECK NEEDS TO BE OPTIMIZED
     width_thres = 90
     value_thres = 20
     maxi = data[0]
@@ -436,7 +439,7 @@ def edge_max_min(data):
             mini = target
             min_ind = i
     maxi, mini = max_ind, min_ind
-    assert data[maxi] >= value_thres and mini - maxi <= width_thres and maxi < mini
+    assert data[maxi] >= value_thres and mini - maxi <= width_thres
     return maxi, mini
 
 
@@ -444,6 +447,21 @@ def min_max(data, max, min):
     """ Converts the data to min max space. """
     g_diff = max - min
     return [(d - min) / g_diff for d in data]
+
+
+def zscore_calc(data):
+    # Takes in a numpy
+    data_len = len(data)
+    if type(data) != np.ndarray:
+        sd = std_dev(data)
+        mn = sum(data) / data_len
+    else:
+        sd = np.std(data)
+        mn = np.mean(data)
+    res = np.empty(data_len, dtype=type(data[0]))
+    for i in range(data_len):
+        res[i] = (data[i] - mn) / sd
+    return res
 
 
 def root_finding(x1, x2, y1, y2):
@@ -464,6 +482,20 @@ def round_up(num):
         return num
 
 
+def max_seg(data, start, end):
+    # returns the maxima index from start to end in data
+    cursor = start + 1
+    maxi_ind = start
+    maxi = data[start]
+    while cursor < end:
+        target = data[cursor]
+        if target > maxi:
+            maxi_ind = cursor
+            maxi = target
+        cursor += 1
+    return maxi_ind
+
+
 def smart_interval(start, end, data):
     start = 0 if start < 0 else start
     end = len(data) if end > len(data) else end
@@ -473,7 +505,16 @@ def smart_interval(start, end, data):
 def edge_preprocess(data, padding):
     maxi, mini = edge_max_min(data)
     start, end = smart_interval(maxi - padding, mini + padding + 1, data)
-    return start, end
+    return start, end, maxi, mini
+
+
+def edge_preprocess_new(data, padding):
+    beam_found = False
+    while not beam_found:
+        maxi, mini = edge_max_min(data)
+        seg_max_ind = max_seg(data, maxi, mini)
+    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
+    return start, end, maxi, mini
 
 
 # ZERO CROSSING (PEAK FINDING)
@@ -555,7 +596,7 @@ def extract_extrema(data):
 def edge_centroid(data, img_data, padding=10):
     # With Gaussian Blur might achieve the best performance
     try:
-        start, end = edge_preprocess(data, padding)
+        start, end, maxi, mini = edge_preprocess(data, padding)
     except AssertionError:
         return -1
     isums = 0
@@ -583,7 +624,7 @@ def centroid_seg(data, start, end):
 def poly_fitting(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
     try:
-        start, end = edge_preprocess(data, padding)
+        start, end, maxi, mini = edge_preprocess(data, padding)
     except AssertionError:
         return -1
     x = np.array(range(start, end))
@@ -646,10 +687,9 @@ def degree_register(elem):
 def gaussian_fitting(data, img_data, padding=10):
     # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
     try:
-        maxi, mini = edge_max_min(data)
+        start, end, maxi, mini = edge_preprocess(data, padding)
     except AssertionError:
         return -1
-    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
     x = np.array(range(start, end))
     if type(img_data) == FastDataMatrix2D:
         img_data.segmentize(start, end)
@@ -681,6 +721,7 @@ def gaussian_fitting_params(data, img_data, padding=10):
     else:
         idata = np.array(img_data[start:end])
     return gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, std_dev(idata)]), x
+"""========================================SIG_PROC HAS ABOVE======================================================"""
 
 
 """======================================
@@ -688,14 +729,53 @@ def gaussian_fitting_params(data, img_data, padding=10):
 ========================================= """
 
 
+def gradient_calc(img, ks=-1):
+    # TODO: This Function IS ADDED, MOVE TO SIGPROC
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    dimr, dimc = img.shape
+    gradient = np.empty((dimr, dimc), dtype=np.float64)
+    for i in range(dimr):
+        for j in range(dimc):
+            gradient[i, j] = sqrt(sobelx.item(i, j) ** 2 + sobely.item(i, j) ** 2)
+    return sobelx, sobely, gradient
+
+
 def gauss_bg_deduce(x, img_data):
     # TODO: OPTIMIZE PERFORMANCE
     idata = img_data.extract_array()
     p0 = [1, len(img_data) / 2, std_dev(idata)]
-    a, b, c_s = gauss_reg(x, idata, p0=p0)
+    try:
+        a, b, c_s = gauss_reg(x, idata, p0=p0)
+    except RuntimeError:
+        return x, np.zeros(len(img_data)), idata
     rem_gauss = gauss_hat(x, a, b, c_s)
     new_y = idata - rem_gauss
     return x, rem_gauss, new_y
+
+
+def fourier_trans(img):
+    f = np.fft.fft2(img)
+    fshift = np.fft.fftshift(f)
+    magnitude_spectrum = 20 * np.log(np.abs(fshift))
+    return f, fshift, magnitude_spectrum
+
+
+def data_masked(data, ratio_lr, ratio_lc, ratio_ur, ratio_uc):
+    row, col = data.shape
+    #pad_q = (1 - ratio) / 2
+    #pad_r = int(pad_q * row)
+    #pad_c = int(pad_q * col)
+    lr = int(ratio_lr * row)
+    ur = row - int(ratio_ur * row)
+    lc = int(ratio_lc * col)
+    uc = col - int(ratio_uc * col)
+    mask = np.zeros_like(data)
+    mask[lr:ur] = 1
+    mask[lc:uc] = 1
+    return data * mask
 
 
 def sobel_process(imgr, gks, sig):
@@ -802,6 +882,75 @@ def significance_test(data, val):
     return val in extract_extrema(data)[0] or val in extract_extrema(data)[1]
 
 
+def fourier_expr():
+    while True:
+        root = input("type the image directory you wanna test in:    ")
+        number = input("type the picture number u wanna test or c to cancel:    ")
+        ratio_lrp = input("type in a lower row masking ratio: ")
+        ratio_urp = input("type in a upper row masking ratio: ")
+        ratio_lcp = input("type in a lower column masking ratio: ")
+        ratio_ucp = input("type in a upper column masking ratio: ")
+
+        if number == 'c':
+            break
+        try:
+            imgn = "img_%d_{0}" % int(number)
+            ratio_lr = float(ratio_lrp)
+            ratio_ur = float(ratio_urp)
+            ratio_lc = float(ratio_lcp)
+            ratio_uc = float(ratio_ucp)
+        except ValueError as e:
+            print("Bad name or ratio format! ")
+            continue
+        print(imgn)
+        IMGDIR = "../{0}/".format(root)
+        ROOTMEAS = "meas/"
+        SAVEDIR = ROOTMEAS + IMGDIR[3:] + imgn + "/"
+        num_img = 3 if root == 'testpic' else 1
+        try:
+            imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", numIMG=num_img)
+        except AttributeError as e:
+            print(e.args)
+            continue
+        dimc = imgr.shape[1]
+        dimr = imgr.shape[0]
+        sig = 0
+        gk = 9
+
+        # ----------------- Preliminary IMG_PROCESSING ---------------------
+        # INITIALIZATION
+        gksize = (gk, gk)
+        sigmaX = sig
+        blur = cv2.GaussianBlur(imgr, gksize, sigmaX)
+        # cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
+        if len(blur.shape) == 3:
+            img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+        else:
+            img = blur
+        img = imgr
+
+        # IMAGE PROCESSING
+        sobelx, sobely, gradient = gradient_calc(img, ks=-1)
+        f_r, fshift_r, magnitude_r = fourier_trans(img)
+        f_r_mask = data_masked(f_r, ratio_lr, ratio_lc, ratio_ur, ratio_uc)
+        inv_r_mask = np.abs(np.fft.ifft2(f_r_mask))
+        f_b, fshift_b, magnitude_b = fourier_trans(blur)
+        f_b_mask = data_masked(f_b, ratio_lr, ratio_lc, ratio_ur, ratio_uc)
+        inv_b_mask = np.abs(np.fft.ifft2(f_b_mask))
+        sobelx_r_fm, sobely_r_fm, gradient_r_fm = gradient_calc(inv_r_mask, ks=-1)
+        sobelx_b_fm, sobely_b_fm, gradient_b_fm = gradient_calc(inv_b_mask, ks=-1)
+        f = np.fft.fft2(img)
+        compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), (gradient, 'Raw Gradient'),
+                       (20 * np.log(np.abs(f_r)), 'Fourier Original'), (20 * np.log(np.abs(fshift_r)), 'FShift Original'),
+                       (magnitude_r, 'Mag Original'), (inv_r_mask, 'FourierR Inverse'), (img, 'original'),
+                       (sobelx_r_fm, 'SobelX Original Fourier'), (sobely_r_fm, 'SobelY Original Fourier'),
+                       (gradient_r_fm, 'Fourier Original Gradient'),
+                       (sobelx_b_fm, 'SobelX Blur Fourier'), (sobely_b_fm, 'SobelY Blur Fourier'),
+                       (gradient_b_fm, 'Fourier Blur Gradient'),
+                       color_map='gray', suptitle=IMGDIR+imgn[:-4])
+
+
+
 def edge_detect_expr(edges, original):
     """
     TODO: 1. SIMPLE Approach: pairwise mask over original image, then compute total
@@ -896,7 +1045,7 @@ def quick_plot(data, xs=None):
     plt.close()
 
 
-def compare_images(*args, ilist=None, color_map=None):
+def compare_images(*args, ilist=None, color_map=None, suptitle=None):
     # Takes in a sequence of IMG(Gray) and TITLE pairs and plot them side by side
     if ilist:
         args = ilist
@@ -904,16 +1053,21 @@ def compare_images(*args, ilist=None, color_map=None):
     row = int(sqrt(graph_amount))
     col = round_up(float(graph_amount) / row)
     plt.figure(figsize=(16, 8))
+    if suptitle:
+        plt.suptitle(suptitle, fontsize=14)
     for i, pair in enumerate(args):
         plt.subplot(row, col, i+1)
         if color_map:
             plt.imshow(pair[0], cmap=color_map)
+        else:
+            plt.imshow(pair[0])
         plt.xticks([]), plt.yticks([])
         plt.title(pair[1])
     plt.show()
+    plt.close()
 
 
-def compare_data_plots(*args, ilist=None, suptitle=None):
+def compare_data_plots(*args, ilist=None, suptitle=None, symbol='b-'):
     # Takes in a sequence of tuples with data, xs, and title pairs
     if ilist:
         args = ilist
@@ -926,10 +1080,10 @@ def compare_data_plots(*args, ilist=None, suptitle=None):
     for i, pair in enumerate(args):
         plt.subplot(row, col, i + 1)
         if len(pair) == 2:
-            plt.plot(pair[0], 'bo-')
+            plt.plot(pair[0], symbol)
             plt.title(pair[1])
         else:
-            plt.plot(pair[1], pair[0], 'bo-')
+            plt.plot(pair[1], pair[0], symbol)
             plt.title(pair[2])
     plt.show()
 
@@ -950,9 +1104,20 @@ def line_graph_contrast(img, xs, ys):
     return p1, p2, line
 
 
-""" ===================================
-    ====== DATA RECORDING HELPER ======
-    =================================== """
+def plot_img(img, cmap='coolwarm'):
+    img = cv2.convertScaleAbs(img)
+    r, c = img.shape
+    rs = np.arange(0, r)
+    cs = np.arange(0, c)
+    xs, ys = np.meshgrid(cs, rs)
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    surf = ax.plot_surface(xs, ys, img, cmap=cmap, linewidth=0, antialiased=False)
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    plt.show()
+    plt.close()
+
 
 # 1. Try Noise Reduction:
 # ---- 1.1 Reduction By Averaging, without FastNIMEANS  ~~ GOOD
@@ -989,19 +1154,23 @@ def register(img):
             3. Compare a randomly selected row of each one
 """
 
+IMGDIRALL = {'bright/': (5, [193, 194]), 'calib/': (5, [1, 2, 3] + list(range(28, 34))),
+               'calib2/': (5, range(32, 46)), 'calib3/': (5, range(16, 60)), 'calib4/': (5, range(59, 193)),
+               'testpic/': (3, range(1, 26)), 'new_test/': (5, range(1, 6)), 'skewed/': (5, range(90, 96))}
 
 def test_old():
     # SETTINGS
-    imgn = "img_4_{0}"
-    IMGDIR = "../new_test/"
+    imgn = "img_193_{0}"
+
+    IMGDIR = "../bright/"
     ROOTMEAS = "meas/"
-    SAVEDIR = ROOTMEAS+imgn + "/"
+    SAVEDIR = ROOTMEAS + IMGDIR[3:] + imgn + "/"
     #imgr = cv2.imread(IMGDIR + imgn + ".png")
-    imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png")
+    imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", 5)
     dimc = imgr.shape[1]
     dimr = imgr.shape[0]
     r_int = dimr // 2
-    c_int = dimc // 2
+    c_int = 450 #dimc // 2
     start = 7
     end = 10
     sig = 0
@@ -1012,7 +1181,6 @@ def test_old():
         os.mkdir(SAVEDIR)
     fwrite = open(NAME_HEADER + ".txt", "w")
     plot_save = NAME_HEADER + ".png"
-
 
     # INITIALIZATION
     cenvalsx = []
@@ -1196,51 +1364,20 @@ def test_interactive():
             break
         imgn = "img_%d_{0}" % int(number)
         print(imgn)
-        IMGDIR = "../testpic/"
         IMGDIR = "../calib4/"
+        #IMGDIR = "../skewed/"
         ROOTMEAS = "meas/"
-        SAVEDIR = ROOTMEAS + imgn + "/"
+        SAVEDIR =ROOTMEAS + IMGDIR[3:] + imgn + "/"
+        #SAVEDIR = ROOTMEAS + imgn + "/"
         # imgr = cv2.imread(IMGDIR + imgn + ".png")
-
-        imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", numIMG=5)
+        num_img = 3 if ROOTMEAS == 'testpic' else 5
+        imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", numIMG=num_img)
         dimc = imgr.shape[1]
         dimr = imgr.shape[0]
-        r_prompt = input("Type in the index for horizontal slice: (range: [0, {0}])   ".format(dimr - 1)) #dimr // 2
-        c_prompt = input("Type in the index for vertical slice: (range: [0, {0}])   ".format(dimc - 1)) #dimc // 2
-        while True:
-            try:
-                r_int = int(r_prompt)
-                assert 0 <= r_int < dimr
-                break
-            except ValueError:
-                r_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimr - 1))  # dimr // 2
-            except AssertionError:
-                r_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimr - 1))
-        while True:
-            try:
-                c_int = int(c_prompt)
-                assert 0 <= c_int < dimc
-                break
-            except ValueError:
-                c_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
-            except AssertionError:
-                c_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
-        #start = 7
-        #end = 10
         sig = 0
         gk = 9
-        name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
-        NAME_HEADER = SAVEDIR + name_scheme
-        if not os.path.exists(SAVEDIR):
-            os.mkdir(SAVEDIR)
-        fwrite = open(NAME_HEADER + ".txt", "w")
-        plot_save = NAME_HEADER + ".png"
 
-        # INITIALIZATION
-        # cv2.imshow("denoised", np.uint8(imgr))                                 # REMOVES TO SHOW IMAGE
-        #x = np.array(range(dimc))
-        #x2 = np.array(range(dimr))
-
+        # ----------------- Preliminary IMG_PROCESSING ---------------------
         # INITIALIZATION
         gksize = (gk, gk)
         sigmaX = sig
@@ -1251,163 +1388,369 @@ def test_interactive():
         else:
             img = blur
 
-        # GAUSSIAN PROCESSING                                 # UNCOMMENT TO SHOW GAUSSIAN PROCESSING
-        """x = np.array(range(dimc))
-        #y = np.array([img_rec.rel_lumin(img, 0, c) for c in x])
-        y = np.array([img.item(dimr // 2, c) for c in x])
-        a1, b1, c_s1 = gauss_reg(x, y)
-    
-        x2 = np.array(range(dimr))
-        y2 = np.array([img.item(r, dimc // 2) for r in x2])
-        a2, b2, c_s2 = gauss_reg(x2, y2)
-        rem_gauss = gauss_mat(img.shape, (a1+a2) / 2, b1, c_s1, b2, c_s2)
-        img = img - rem_gauss
-        cv2.imshow("denoise", img)
-        y_hat = gauss_hat(x, a1, b1, c_s1)
-        plt.figure(figsize=(16, 8))
-        plt.plot(x, y, 'b-', x, y_hat, 'r-')
-        plt.show()
-        plt.close()
-        plt.figure(figsize=(16,8))
-        plt.plot(x, y-y_hat, 'b-')
-        plt.show()"""
-
         # IMAGE PROCESSING
-        sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=-1)
-        sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=-1)
-        """kernel = np.array([[-1, -1, -1],
-                           [-1, 8, -1],
-                           [-1, -1, -1]])
-        kerneled = cv2.filter2D(img, -1, kernel)
-        cv2.imshow("kerneled", kerneled)"""  # KERNEL EXPERIMENT
-        # laplacian = cv2.Laplacian(img,cv2.CV_64F)          # LAPLACIAN FILTERING
-        """plt.subplot(2,2,1),plt.imshow(cv2.cvtColor(imgr, cv2.COLOR_BGR2GRAY),cmap = 'gray')
-        plt.title('Original'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,2),plt.imshow(img,cmap = 'gray')
-        plt.title('Gaussian Filter'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,3),plt.imshow(sobelx,cmap = 'gray')
-        plt.title('Scharr X'), plt.xticks([]), plt.yticks([])
-        plt.subplot(2,2,4),plt.imshow(sobely,cmap = 'gray')
-        plt.title('Scharr Y'), plt.xticks([]), plt.yticks([])"""
-        # plt.savefig(NAME_HEADER + "filters.png")
-        # plt.savefig(NAME_HEADER + "2D_filters.png")
-        # plt.close()                                         # REMOVES TO SHOW CONTRAST OF FILTERS
+        sobelx, sobely, gradient = gradient_calc(img, ks=-1)
+        f_r, fshift_r, magnitude_r = fourier_trans(imgr)
+        f_r_mask = data_masked(f_r, 0, 0, 0.9, 0.9)
+        inv_r_mask = np.abs(np.fft.ifft2(f_r_mask))
+        sobelx_r_fm, sobely_r_fm, gradient_r_fm = gradient_calc(inv_r_mask, ks=-1)
+        compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), (gradient, 'Raw Gradient'), (magnitude_r, 'Mag Original'),
+                       (sobelx_r_fm, 'SobelX Fourier', (sobely_r_fm, 'SobelY Fourier'), (gradient_r_fm, 'Gradient Fourier')),
+                       color_map='gray', suptitle=IMGDIR+imgn[:-4])
+        #img, sobelx, sobely, gradient = inv_r_mask, sobelx_r_fm, sobely_r_fm, gradient_r_fm
+        plot_img(img)
+        plot_img(gradient)
+
+        # --------------------- INTERACTIVE SESSION -----------------------
+        while True:
+            r_prompt = input("Type in the index for horizontal slice or c to cancel: (range: [0, {0}])   ".format(dimr - 1)) #dimr // 2
+            if r_prompt == 'c':
+                break
+            c_prompt = input("Type in the index for vertical slice: (range: [0, {0}])   ".format(dimc - 1)) #dimc // 2
+            while True:
+                try:
+                    r_int = int(r_prompt)
+                    assert 0 <= r_int < dimr
+                    break
+                except ValueError:
+                    r_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimr - 1))  # dimr // 2
+                except AssertionError:
+                    r_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimr - 1))
+            while True:
+                try:
+                    c_int = int(c_prompt)
+                    assert 0 <= c_int < dimc
+                    break
+                except ValueError:
+                    c_prompt = input("Bad Input, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
+                except AssertionError:
+                    c_prompt = input("Out of Bound, try again: (range: [0, {0}])    ".format(dimc - 1))  # dimc // 2
+
+            # ---------------- DATA RECORDING -----------------
+            name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
+            NAME_HEADER = SAVEDIR + name_scheme
+            if not os.path.exists(SAVEDIR):
+                os.mkdir(SAVEDIR)
+            fwrite = open(NAME_HEADER + ".txt", "w")
+            plot_save = NAME_HEADER + ".png"
+
+            # DETECTION INIT
+            xh = np.array(range(dimc))
+            xv = np.array(range(dimr))
+            zeroh = np.zeros(dimc)
+            zerov = np.zeros(dimr)
+            y_s_x = FM(sobelx, FM.HOR, r_int)
+            y_s_y = FM(sobely, FM.VER, c_int)
+            ysx_t = y_s_x.extract_array()
+            ysy_t = y_s_y.extract_array()
+            zscorex = zscore_calc(ysx_t)
+            zscorey = zscore_calc(ysy_t)
+            imgx = FM(imgr, FM.HOR, r_int)
+            imgy = FM(imgr, FM.VER, c_int)
+            blurimgx = FM(img, FM.HOR, r_int)
+            blurimgy = FM(img, FM.VER, c_int)
+            gx, bgx, deducedx = gauss_bg_deduce(xh, imgx)
+            gy, bgy, deducedy = gauss_bg_deduce(xv, imgy)
+            minmax_xsobel = min_max(ysx_t, max(ysx_t), min(ysx_t))
+            minmax_ysobel = min_max(ysy_t, max(ysy_t), min(ysy_t))
+            sdevx = np.std(minmax_xsobel)
+            sdevy = np.std(minmax_ysobel)
+            DEV_MESSAGE = "SobelX StdDev: {0}, SobelY StdDev: {1}\n".format(sdevx, sdevy)
+            print(DEV_MESSAGE)
+
+            # EDGE DETECTION
+            zx = zero_crossing(y_s_x)
+            ex = edge_converge_extreme(y_s_x)
+            ebx = edge_converge_base(y_s_x)
+            ecbx = edge_centroid(y_s_x, blurimgx)
+            ecx = edge_centroid(y_s_x, imgx)
+            try:
+                #paramhp, xp1 = poly_fitting_params(y_s_x, deducedx)
+                #paramhg, xg1 = gaussian_fitting_params(y_s_x, deducedx)
+                paramhp, xp1 = poly_fitting_params(y_s_x, imgx)
+                paramhg, xg1 = gaussian_fitting_params(y_s_x, imgx)
+                xp_h_plot, yp_h_plot = poly_curve(paramhp, xp1)
+                xg_h_plot, yg_h_plot = gaussian_curve(xg1, paramhg[0], paramhg[1], paramhg[2])
+            except (AssertionError, RuntimeError):
+                print("No image data for horizontal slice!")
+                xp_h_plot, yp_h_plot = xh, zeroh
+                xg_h_plot, yg_h_plot = xh, zeroh
+
+            px, gx = xp_h_plot[np.argmax(yp_h_plot)], xg_h_plot[np.argmax(yg_h_plot)]
+            print("edge: {0}, poly:{1}, gaussian:{2}".format(ecx, px, gx))
+
+            zy = zero_crossing(y_s_y)
+            ey = edge_converge_extreme(y_s_y)
+            eby = edge_converge_base(y_s_y)
+            ecby = edge_centroid(y_s_y, blurimgy)
+            ecy = edge_centroid(y_s_y, imgy)
+            try:
+                paramvp, xp2 = poly_fitting_params(y_s_y, imgy)
+                paramvg, xg2 = gaussian_fitting_params(y_s_y, imgy)
+                xp_v_plot, yp_v_plot = poly_curve(paramvp, xp2)
+                xg_v_plot, yg_v_plot = gaussian_curve(xg2, paramvg[0], paramvg[1], paramvg[2])
+            except (AssertionError, RuntimeError):
+                print("No image data for vertical slice!")
+                xp_v_plot, yp_v_plot = xv, zerov
+                xg_v_plot, yg_v_plot = xv, zerov
+            py, gy = xp_v_plot[np.argmax(yp_v_plot)], xg_v_plot[np.argmax(yg_v_plot)]
+            print("edge: {0} poly:{1}, gaussian:{2}".format(ecy, py, gy))
 
 
-        # DETECTION INIT
-        xh = np.array(range(dimc))
-        xv = np.array(range(dimr))
-        zeroh = np.zeros(dimc)
-        zerov = np.zeros(dimr)
-        y_s_x = FM(sobelx, FM.HOR, r_int)
-        y_s_y = FM(sobely, FM.VER, c_int)
-        imgx = FM(imgr, FM.HOR, r_int)
-        imgy = FM(imgr, FM.VER, c_int)
-        blurimgx = FM(img, FM.HOR, r_int)
-        blurimgy = FM(img, FM.VER, c_int)
-        gx, bgx, deducedx = gauss_bg_deduce(xh, imgx)
-        gy, bgy, deducedy = gauss_bg_deduce(xv, imgy)
+            # DATA RECORDING
+            fwrite.write("x: edge_centroid: {0}, poly: {1}, gaussian: {2}; ".format(ecx, px, gx))
+            fwrite.write('\n')
+            fwrite.write("y: edge_centroid: {0}, poly: {1}, gaussian: {2}\n".format(ecy, py, gy))
+            fwrite.write(DEV_MESSAGE)
 
-        #print(extract_extrema(y_s_x))
-        #print(extract_extrema(y_s_y))
+            # GK_PLOT
+            """if i == 9:
+                fig = plt.figure(figsize=(16, 8))
+                fig.canvas.set_window_title(gk_setting)
+                plt.subplot(211)
+                plt.plot(y_s_x, 'b-')
+                plt.ylabel("sobel_x")
+                plt.subplot(212)
+                plt.plot(y_s_y, 'b-')
+                plt.ylabel("sobel_y")
+                #plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")"""
 
-        # EDGE DETECTION
-        zx = zero_crossing(y_s_x)
-        ex = edge_converge_extreme(y_s_x)
-        ebx = edge_converge_base(y_s_x)
-        ecbx = edge_centroid(y_s_x, blurimgx)
-        ecx = edge_centroid(y_s_x, imgx)
-        try:
-            #paramhp, xp1 = poly_fitting_params(y_s_x, deducedx)
-            #paramhg, xg1 = gaussian_fitting_params(y_s_x, deducedx)
-            paramhp, xp1 = poly_fitting_params(y_s_x, imgx)
-            paramhg, xg1 = gaussian_fitting_params(y_s_x, imgx)
-            xp_h_plot, yp_h_plot = poly_curve(paramhp, xp1)
-            xg_h_plot, yg_h_plot = gaussian_curve(xg1, paramhg[0], paramhg[1], paramhg[2])
-        except AssertionError:
-            print("No image data for horizontal slice!")
-            xp_h_plot, yp_h_plot = xh, zeroh
-            xg_h_plot, yg_h_plot = xh, zeroh
-
-        px, gx = xp_h_plot[np.argmax(yp_h_plot)], xg_h_plot[np.argmax(yg_h_plot)]
-        print("edge: {0}, poly:{1}, gaussian:{2}".format(ecx, px, gx))
-
-        zy = zero_crossing(y_s_y)
-        ey = edge_converge_extreme(y_s_y)
-        eby = edge_converge_base(y_s_y)
-        ecby = edge_centroid(y_s_y, blurimgy)
-        ecy = edge_centroid(y_s_y, imgy)
-        try:
-            paramvp, xp2 = poly_fitting_params(y_s_y, imgy)
-            paramvg, xg2 = gaussian_fitting_params(y_s_y, imgy)
-            xp_v_plot, yp_v_plot = poly_curve(paramvp, xp2)
-            xg_v_plot, yg_v_plot = gaussian_curve(xg2, paramvg[0], paramvg[1], paramvg[2])
-        except AssertionError:
-            print("No image data for vertical slice!")
-            xp_v_plot, yp_v_plot = xv, zerov
-            xg_v_plot, yg_v_plot = xv, zerov
-        py, gy = xp_v_plot[np.argmax(yp_v_plot)], xg_v_plot[np.argmax(yg_v_plot)]
-        print("edge: {0} poly:{1}, gaussian:{2}".format(ecy, py, gy))
-
-
-        # DATA RECORDING
-        fwrite.write("x: edge_centroid: {0}, poly: {1}, gaussian: {2}; ".format(ecx, px, gx))
-        fwrite.write('\n')
-        fwrite.write("y: edge_centroid: {0}, poly: {1}, gaussian: {2}\n".format(ecy, py, gy))
-
-        # GK_PLOT
-        """if i == 9:
+            imgx.initialize()
+            imgy.initialize()
+            imgxarr = imgx.extract_array()
+            imgyarr = imgy.extract_array()
+            indic_up_x = np.full(len(imgxarr), 1)
+            indic_down_x = np.full(len(imgxarr), -1)
+            indic_up_y = np.full(len(imgyarr), 1)
+            indic_down_y = np.full(len(imgyarr), -1)
+            # if i >= 13:
             fig = plt.figure(figsize=(16, 8))
-            fig.canvas.set_window_title(gk_setting)
-            plt.subplot(211)
-            plt.plot(y_s_x, 'b-')
+            plt.subplot(611)
+            #plt.plot(min_max(ysx_t, max(ysx_t), min(ysx_t)), 'b-')
+            plt.plot(xh, ysx_t, 'b-')
             plt.ylabel("sobel_x")
-            plt.subplot(212)
-            plt.plot(y_s_y, 'b-')
+            plt.subplot(612)
+            plt.plot(xh, zscore_calc(imgxarr), 'b-', xh, zscorex, 'c-', xh, indic_up_x, 'r:', xh, indic_down_x, 'r:')
+            plt.ylabel("zscoresX")
+            plt.legend(['zscoreIMGX', 'zscoreSobelX'], loc="upper right")
+            plt.subplot(613)
+            plt.plot(xh, imgxarr, 'b-', xh, bgx, 'm-', xh, deducedx, 'c-', xp_h_plot, yp_h_plot, 'g-',
+                     xg_h_plot, yg_h_plot, 'r-')
+            plt.ylabel("Horizontal Slice, ECX: {0}".format(ecx))
+            plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
+            plt.subplot(614)
+            #plt.plot(min_max(ysy_t, max(ysy_t), min(ysy_t)), 'b-')
+            plt.plot(xv, ysy_t, 'b-')
             plt.ylabel("sobel_y")
-            #plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")"""
+            plt.subplot(615)
+            plt.plot(xv, zscore_calc(imgyarr), 'b-', xv, zscorey, 'c-', xv, indic_up_y, 'r:', xv, indic_down_y, 'r:')
+            plt.ylabel("zscoresY")
+            plt.legend(['zscoreIMGY', 'zscoreSobelY'], loc="upper right")
+            plt.subplot(616)
+            plt.plot(xv, imgyarr, 'b-', xv, bgy, 'm-', xv, deducedy, 'c-', xp_v_plot, yp_v_plot, 'g-',
+                     xg_v_plot, yg_v_plot, 'r-')
+            plt.ylabel("Vertical Slice, ECY: {0}".format(ecy))
+            plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
+            plt.show()
+            fig.savefig(NAME_HEADER + "_r{0}_c{1}.png".format(r_int, c_int)) # UNCOMMENT WHEN SAVING PLOTS
 
-        # if i >= 13:
-        fig = plt.figure(figsize=(16, 8))
-        plt.subplot(211)
-        imgx.initialize()
-        plt.plot(xh, imgx.extract_array(), 'b-', xh, bgx, 'm-', xh, deducedx, 'c-', xp_h_plot, yp_h_plot, 'g-', xg_h_plot, yg_h_plot, 'r-')
-        plt.ylabel("Horizontal Slice, ECX: {0}".format(ecx))
-        plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
-        plt.subplot(212)
-        imgy.initialize()
-        plt.plot(xv, imgy.extract_array(), 'b-', xv, bgy, 'm-', xv, deducedy, 'c-', xp_v_plot, yp_v_plot, 'g-', xg_v_plot, yg_v_plot, 'r-')
-        plt.ylabel("Vertical Slice, ECY: {0}".format(ecy))
-        plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'], loc="upper right")
-        plt.show()
-        # plt.savefig(NAME_HEADER + "_" + gk_setting + ".png") # UNCOMMENT WHEN SAVING PLOTS
 
-        """fig = plt.figure(figsize=(16, 8))
-        plt.subplot(2, 1, 1)"""
-        # plt.plot(ins, cenvalsx, 'b-', ins, edgvalsx, 'r-', ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
-        # plt.legend(['zero crossing', 'edge_converging_extreme', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
-        # plt.plot(ins, cenvalsx, 'b-', ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
-        # plt.legend(['zero crossing', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'],loc="lower left")
-        """plt.plot(ins, ebvalsx, 'g-', ins, ecvalsx, 'c-', ins, ecbvalsx, 'm-')
-        plt.legend(['edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
-        plt.ylabel("x_meas")
-        plt.subplot(2, 1, 2)
-        # plt.plot(ins, cenvalsy, 'b-', ins, ebvalsy, 'g-', ins, ecvalsy, 'c-', ins, ecbvalsy, 'm-')
-        # plt.legend(['zero crossing', 'edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
-        plt.plot(ins, ebvalsy, 'g-', ins, ecvalsy, 'c-', ins, ecbvalsy, 'm-')
-        plt.legend(['edge_converging_base', 'edge_centroid', 'edge_centroid_blurred'], loc="lower left")
-        plt.ylabel("y_meas")
-        plt.xlabel("kernel size")
-        plt.show()
-        # fig.savefig(plot_save)
-        # plt.savefig(plot_save)"""
+def test_record():
+    # TODO: TEST OUT FACET MODEL AND CONDITIONAL CONVOLUTIONAL KERNEL
+    # SETTINGS
+    img_ns = "img_%d_{0}"
+    IMGDIRS = IMGDIRALL
+    ROOTMEAS = "meas/"
+    OFFSET = '../'
+    rslice = range(10, 480, 50)
+    cslice = range(20, 640, 50)
+    errors = open(ROOTMEAS + 'errors.txt', 'w')
+    for IMGDIR, spec in IMGDIRS.items():
+        IMGDIR = OFFSET + IMGDIR
+        numPic, img_range = spec
+        for img_i in img_range:
+            imgn = img_ns % img_i
+            print(imgn)
+            # IMGDIR = "../calib4/"
+            SAVEDIR = ROOTMEAS + IMGDIR[3:] + imgn + "/"
+            # SAVEDIR = ROOTMEAS + imgn + "/"
+            # imgr = cv2.imread(IMGDIR + imgn + ".png")
+            try:
+                imgr, ori = test_noise_reduce(IMGDIR + imgn + ".png", numIMG=numPic)
+            except AttributeError as e:
+                print(e.args)
+                continue
+            try:
+                dimc = imgr.shape[1]
+                dimr = imgr.shape[0]
+                sig = 0
+                gk = 9
+
+                # ----------------- Preliminary IMG_PROCESSING ---------------------
+                # INITIALIZATION
+                gksize = (gk, gk)
+                sigmaX = sig
+                blur = cv2.GaussianBlur(imgr, gksize, sigmaX)
+                # cv2.imshow("blurred", blur)                        # REMOVES TO SHOW BLURRED IMAGE
+                if len(blur.shape) == 3:
+                    img = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+                else:
+                    img = blur
+
+                # IMAGE PROCESSING
+                sobelx, sobely, gradient = gradient_calc(img, ks=-1)
+                #compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), (gradient, 'Raw Gradient'), color_map='gray')
+                #plot_img(img)
+                #plot_img(gradient)
+
+                # --------------------- INTERACTIVE SESSION -----------------------
+                for r_int, c_int in zip(rslice, cslice):
+                    # ---------------- DATA RECORDING -----------------
+                    name_scheme = imgn + ("_({0}, {1})").format(r_int, c_int)
+                    NAME_HEADER = SAVEDIR + name_scheme
+                    if not os.path.exists(SAVEDIR):
+                        os.mkdir(SAVEDIR)
+                    fwrite = open(NAME_HEADER + ".txt", "w")
+                    plot_save = NAME_HEADER + ".png"
+
+                    # DETECTION INIT
+                    xh = np.array(range(dimc))
+                    xv = np.array(range(dimr))
+                    zeroh = np.zeros(dimc)
+                    zerov = np.zeros(dimr)
+                    y_s_x = FM(sobelx, FM.HOR, r_int)
+                    y_s_y = FM(sobely, FM.VER, c_int)
+                    ysx_t = y_s_x.extract_array()
+                    ysy_t = y_s_y.extract_array()
+                    zscorex = zscore_calc(ysx_t)
+                    zscorey = zscore_calc(ysy_t)
+                    imgx = FM(imgr, FM.HOR, r_int)
+                    imgy = FM(imgr, FM.VER, c_int)
+                    blurimgx = FM(img, FM.HOR, r_int)
+                    blurimgy = FM(img, FM.VER, c_int)
+                    gx, bgx, deducedx = gauss_bg_deduce(xh, imgx)
+                    gy, bgy, deducedy = gauss_bg_deduce(xv, imgy)
+                    minmax_xsobel = min_max(ysx_t, max(ysx_t), min(ysx_t))
+                    minmax_ysobel = min_max(ysy_t, max(ysy_t), min(ysy_t))
+                    sdevx = np.std(minmax_xsobel)
+                    sdevy = np.std(minmax_ysobel)
+                    DEV_MESSAGE = "SobelX StdDev: {0}, SobelY StdDev: {1}\n".format(sdevx, sdevy)
+                    print(DEV_MESSAGE)
+
+                    # EDGE DETECTION
+                    zx = zero_crossing(y_s_x)
+                    ex = edge_converge_extreme(y_s_x)
+                    ebx = edge_converge_base(y_s_x)
+                    ecbx = edge_centroid(y_s_x, blurimgx)
+                    ecx = edge_centroid(y_s_x, imgx)
+                    try:
+                        # paramhp, xp1 = poly_fitting_params(y_s_x, deducedx)
+                        # paramhg, xg1 = gaussian_fitting_params(y_s_x, deducedx)
+                        paramhp, xp1 = poly_fitting_params(y_s_x, imgx)
+                        paramhg, xg1 = gaussian_fitting_params(y_s_x, imgx)
+                        xp_h_plot, yp_h_plot = poly_curve(paramhp, xp1)
+                        xg_h_plot, yg_h_plot = gaussian_curve(xg1, paramhg[0], paramhg[1], paramhg[2])
+                    except (AssertionError, RuntimeError):
+                        print("No image data for horizontal slice!")
+                        xp_h_plot, yp_h_plot = xh, zeroh
+                        xg_h_plot, yg_h_plot = xh, zeroh
+
+                    px, gx = xp_h_plot[np.argmax(yp_h_plot)], xg_h_plot[np.argmax(yg_h_plot)]
+                    print("edge: {0}, poly:{1}, gaussian:{2}".format(ecx, px, gx))
+
+                    zy = zero_crossing(y_s_y)
+                    ey = edge_converge_extreme(y_s_y)
+                    eby = edge_converge_base(y_s_y)
+                    ecby = edge_centroid(y_s_y, blurimgy)
+                    ecy = edge_centroid(y_s_y, imgy)
+                    try:
+                        paramvp, xp2 = poly_fitting_params(y_s_y, imgy)
+                        paramvg, xg2 = gaussian_fitting_params(y_s_y, imgy)
+                        xp_v_plot, yp_v_plot = poly_curve(paramvp, xp2)
+                        xg_v_plot, yg_v_plot = gaussian_curve(xg2, paramvg[0], paramvg[1], paramvg[2])
+                    except (AssertionError, RuntimeError):
+                        print("No image data for vertical slice!")
+                        xp_v_plot, yp_v_plot = xv, zerov
+                        xg_v_plot, yg_v_plot = xv, zerov
+                    py, gy = xp_v_plot[np.argmax(yp_v_plot)], xg_v_plot[np.argmax(yg_v_plot)]
+                    print("edge: {0} poly:{1}, gaussian:{2}".format(ecy, py, gy))
+
+                    # DATA RECORDING
+                    fwrite.write("x: edge_centroid: {0}, poly: {1}, gaussian: {2}; ".format(ecx, px, gx))
+                    fwrite.write('\n')
+                    fwrite.write("y: edge_centroid: {0}, poly: {1}, gaussian: {2}\n".format(ecy, py, gy))
+                    fwrite.write(DEV_MESSAGE)
+
+                    # GK_PLOT
+                    """if i == 9:
+                        fig = plt.figure(figsize=(16, 8))
+                        fig.canvas.set_window_title(gk_setting)
+                        plt.subplot(211)
+                        plt.plot(y_s_x, 'b-')
+                        plt.ylabel("sobel_x")
+                        plt.subplot(212)
+                        plt.plot(y_s_y, 'b-')
+                        plt.ylabel("sobel_y")
+                        #plt.savefig(NAME_HEADER + "_" + gk_setting + ".png")"""
+
+                    imgx.initialize()
+                    imgy.initialize()
+                    imgxarr = imgx.extract_array()
+                    imgyarr = imgy.extract_array()
+                    indic_up_x = np.full(len(imgxarr), 1)
+                    indic_down_x = np.full(len(imgxarr), -1)
+                    indic_up_y = np.full(len(imgyarr), 1)
+                    indic_down_y = np.full(len(imgyarr), -1)
+                    # if i >= 13:
+                    """
+                    fig = plt.figure(figsize=(16, 8))
+                    plt.subplot(611)
+                    # plt.plot(min_max(ysx_t, max(ysx_t), min(ysx_t)), 'b-')
+                    plt.plot(xh, ysx_t, 'b-')
+                    plt.ylabel("sobel_x")
+                    plt.subplot(612)
+                    plt.plot(xh, zscore_calc(imgxarr), 'b-', xh, zscorex, 'c-', xh, indic_up_x, 'r:', xh, indic_down_x, 'r:')
+                    plt.ylabel("zscoresX")
+                    plt.legend(['zscoreIMGX', 'zscoreSobelX'], loc="upper right")
+                    plt.subplot(613)
+                    plt.plot(xh, imgxarr, 'b-', xh, bgx, 'm-', xh, deducedx, 'c-', xp_h_plot, yp_h_plot, 'g-',
+                             xg_h_plot, yg_h_plot, 'r-')
+                    plt.ylabel("Horizontal Slice, ECX: {0}".format(ecx))
+                    plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'],
+                               loc="upper right")
+                    plt.subplot(614)
+                    # plt.plot(min_max(ysy_t, max(ysy_t), min(ysy_t)), 'b-')
+                    plt.plot(xv, ysy_t, 'b-')
+                    plt.ylabel("sobel_y")
+                    plt.subplot(615)
+                    plt.plot(xv, zscore_calc(imgyarr), 'b-', xv, zscorey, 'c-', xv, indic_up_y, 'r:', xv, indic_down_y, 'r:')
+                    plt.ylabel("zscoresY")
+                    plt.legend(['zscoreIMGY', 'zscoreSobelY'], loc="upper right")
+                    plt.subplot(616)
+                    plt.plot(xv, imgyarr, 'b-', xv, bgy, 'm-', xv, deducedy, 'c-', xp_v_plot, yp_v_plot, 'g-',
+                             xg_v_plot, yg_v_plot, 'r-')
+                    plt.ylabel("Vertical Slice, ECY: {0}".format(ecy))
+                    plt.legend(['Raw image data', 'gaussian background', 'remnant', 'polynomial', 'gaussian'],
+                               loc="upper right")
+                    #plt.show()
+                    fig.savefig(NAME_HEADER + "_r{0}_c{1}.png".format(r_int, c_int))  # UNCOMMENT WHEN SAVING PLOTS
+                    plt.close()
+                    fwrite.close()"""
+            except TypeError as e:
+                message = 'ERROR in {0}: '.format(IMGDIR + imgn) + str(e.args) + '\n'
+                print(message)
+                fwrite.write(message)
+                fwrite.close()
+                errors.write(message)
+                continue
+    errors.close()
 
 
 def test(folder, imgn):
     # TODO: TEST OUT FACET MODEL AND CONDITIONAL CONVOLUTIONAL KERNEL
     # SETTINGS
     ROOTMEAS = "meas/"
-    SAVEDIR = ROOTMEAS + imgn[:-4] + "/"
+    SAVEDIR = ROOTMEAS + folder[3:] + imgn[:-4] + "/"
     # imgr = cv2.imread(IMGDIR + imgn + ".png")
 
     imgr, ori = test_noise_reduce(folder + imgn, numIMG=5)
@@ -1516,6 +1859,10 @@ def test(folder, imgn):
             print("No image data for horizontal slice!")
             xp_h_plot, yp_h_plot = xh, zeroh
             xg_h_plot, yg_h_plot = xh, zeroh
+        except RuntimeError:
+            print("No image data for horizontal slice!")
+            xp_h_plot, yp_h_plot = xh, zeroh
+            xg_h_plot, yg_h_plot = xh, zeroh
 
         px, gx = xp_h_plot[np.argmax(yp_h_plot)], xg_h_plot[np.argmax(yg_h_plot)]
         print("edge: {0}, poly:{1}, gaussian:{2}".format(ecx, px, gx))
@@ -1527,6 +1874,10 @@ def test(folder, imgn):
             xp_v_plot, yp_v_plot = poly_curve(paramvp, xp2)
             xg_v_plot, yg_v_plot = gaussian_curve(xg2, paramvg[0], paramvg[1], paramvg[2])
         except AssertionError:
+            print("No image data for vertical slice!")
+            xp_v_plot, yp_v_plot = xv, zerov
+            xg_v_plot, yg_v_plot = xv, zerov
+        except RuntimeError:
             print("No image data for vertical slice!")
             xp_v_plot, yp_v_plot = xv, zerov
             xg_v_plot, yg_v_plot = xv, zerov
@@ -1665,8 +2016,9 @@ def center_detect_test(folder_path, img_name_scheme, num_sample, sample_int=50, 
     gksize = (gk, gk)
     sigmaX = 0
     img = cv2.GaussianBlur(imgr, gksize, sigmaX)
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
-    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    #sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    #sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    sobelx, sobely, gradient = gradient_calc(img, ks)
     # ------------------------------------------------------------
     # Parameter Setting
     METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
@@ -1894,6 +2246,98 @@ def center_detect(img_name_scheme, num_sample, sample_int=50, debug=False, gk=9,
     return center_x, center_y
 
 
+def center_detect(img_name_scheme, num_sample, sample_int=50, gk=9, ks=-1, m=0, p=20,
+                       b=1, c=0):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    imgr = test_noise_reduce(img_name_scheme, num_sample)[0]
+    dimr = imgr.shape[0]
+    dimc = imgr.shape[1]
+    # Image Processing
+    gksize = (gk, gk)
+    sigmaX = 0
+    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    # ------------------------------------------------------------
+    # Parameter Setting
+    METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
+               3: zero_crossing, 4: edge_converge_base, 5: edge_converge_extreme}
+    edge_method = METHODS[m]
+    nr = sample_int
+    r_thresh = dimr / (sample_int * 3.0)
+    nc = sample_int
+    c_thresh = dimc / (sample_int * 3.0)
+    # ------------------------------------------------------------
+    # Gathering Data
+    hs = []
+    vs = []
+    while nr < dimr:
+        data_x = FM(sobelx, FM.HOR, nr)
+        if m < 3:
+            ec_x = edge_method(data_x, FM(img, FM.HOR, nr), p)
+        else:
+            ec_x = edge_method(data_x)
+        nr += sample_int
+        if ec_x == -1:
+            continue
+        else:
+            hs.append((nr - sample_int, ec_x))
+
+    while nc < dimc:
+        data_y = FM(sobely, FM.VER, nc)
+        if m < 3:
+            ec_y = edge_method(data_y, FM(img, FM.VER, nc), p)
+        else:
+            ec_y = edge_method(data_y)
+        nc += sample_int
+        if ec_y == -1:
+            continue
+        else:
+            vs.append((nc - sample_int, ec_y))
+    len_hs = len(hs)
+    len_vs = len(vs)
+    # ------------------------------------------------------------
+    # --------------- PRE-CHECK DATA VALUES ----------------------
+    hxs = np.zeros(len_hs)
+    hys = np.zeros(len_hs)
+    for i in range(len_hs):
+        hxs[i] = hs[i][1]
+        hys[i] = hs[i][0]
+    vxs = np.zeros(len_vs)
+    vys = np.zeros(len_vs)
+    for i in range(len_vs):
+        vxs[i] = vs[i][0]
+        vys[i] = vs[i][1]
+    x_valid = False
+    y_valid = False
+    # OUTLIER DETECTION   TODO: OPTIMIZE, THIS IS NAIVE
+    if len_hs >= r_thresh:
+        x_valid = True
+        hys, hxs = reg_pre_debias(hys, hxs)
+        line_a = HoughLine(x=hxs, data=hys)
+    if len_vs >= c_thresh:
+        y_valid = True
+        vxs, vys = reg_pre_debias(vxs, vys)
+        line_b = HoughLine(x=vxs, data=vys)
+    # ------------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    # ------------------------------------------------------------
+    # DATA RECORDING AND PROCESSING
+    if c == 1:
+        center_x = sum(hxs) / len_hs if x_valid else -1
+        center_y = sum(vys) / len_vs if y_valid else -1
+    else:
+        if x_valid and y_valid:
+            center_x, center_y = HoughLine.intersect(line_a, line_b)
+        else:
+            center_x = sum(hxs) / len_hs if x_valid else -1
+            center_y = sum(vys) / len_vs if y_valid else -1
+    # ---------------------------------------------------------
+    return center_x, center_y
+
+
+
 def random_test():
     data = [27, 21, 22, 21, 21, 18, 41, 69, 83, 62, 38, 16, 21, 20, 18, 17]
     print(len(data))
@@ -2071,7 +2515,7 @@ def convergence_test(folder, ns):
     startP = 80
     endP = 193
     ms = range(3)
-    fwrite = open('meas/convergence.csv', 'w')
+    fwrite = open('meas/convergence_v1.csv', 'w')
     cwriter = csv.writer(fwrite)
     cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
     for m in ms:
@@ -2161,7 +2605,7 @@ def convergence_test_final(folder, ns):
     startP = 80
     endP = 193
     ms = range(3)
-    fwrite = open('meas/convergence.csv', 'w')
+    fwrite = open('meas/convergence_v1.csv', 'w')
     cwriter = csv.writer(fwrite)
     cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
     for m in ms:
@@ -2264,6 +2708,16 @@ def distance(h, angle):
     return 2.54 * (h / tan(radians(angle)))
 
 
+def deviation():
+    serr = 1.017
+    p_to_i = 1 / 166.1861
+    fluc = serr * p_to_i
+    dev = 2 * fluc
+    print(fluc, dev)
+    mm_per_inch = 25.4
+    mfluc, mdev = mm_per_inch * fluc, mm_per_inch * dev
+    print(mfluc, mdev)
+
     #print(center_detect(folder + img_name, 10, debug=True))
 
 
@@ -2285,9 +2739,14 @@ def distance(h, angle):
 
 
 if __name__ == '__main__':
-    main()
+    #main()
     #print(DEGREES)
+    #test_old()
+    #test('../bright/', 'img_193_{0}.png')
+    #deviation()
     #test_interactive()
+    fourier_expr()
+    #test_record()
     #test_canny_detect()
 
 
