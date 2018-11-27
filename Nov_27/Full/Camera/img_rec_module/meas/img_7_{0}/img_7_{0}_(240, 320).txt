@@ -1,0 +1,21 @@
+ksize:(7, 7), sigmax:0
+x: zero_crossing: 157.8389116826965, edge_converge: 158.45130962399327; 
+y: zero_crossing: -1, edge_converge: 411.79259030140565
+ksize:(9, 9), sigmax:0
+x: zero_crossing: 157.75410480327545, edge_converge: 158.32429639754088; 
+y: zero_crossing: -1, edge_converge: 411.6718763916268
+ksize:(11, 11), sigmax:0
+x: zero_crossing: 157.7245284134464, edge_converge: 155.54913028965618; 
+y: zero_crossing: -1, edge_converge: 411.593647090896
+ksize:(13, 13), sigmax:0
+x: zero_crossing: 157.76000829765138, edge_converge: 158.15343806061153; 
+y: zero_crossing: -1, edge_converge: 411.5797965685118
+ksize:(15, 15), sigmax:0
+x: zero_crossing: 157.83060827808885, edge_converge: 157.98016047257528; 
+y: zero_crossing: -1, edge_converge: -1
+ksize:(17, 17), sigmax:0
+x: zero_crossing: 157.90853193451255, edge_converge: 157.6948902708295; 
+y: zero_crossing: -1, edge_converge: -1
+ksize:(19, 19), sigmax:0
+x: zero_crossing: 157.98721999268648, edge_converge: 157.47066779723983; 
+y: zero_crossing: -1, edge_converge: -1
