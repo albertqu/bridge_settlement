@@ -1,6 +1,0 @@
-ksize:(7, 7), sigmax:0
-x: zero_crossing: 236.92774193101968, edge_converge: 237.5228648141686; 
-y: zero_crossing: 325.7458333221428, edge_converge: 321.11252693875815
-ksize:(9, 9), sigmax:0
-x: zero_crossing: 237.21044902427207, edge_converge: 234.45920213005442; 
-y: zero_crossing: 325.6826399612562, edge_converge: 321.13169019760346

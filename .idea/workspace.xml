@@ -1,0 +1,834 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="7c953543-28f0-4e1c-a16e-80c967c3d32f" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/img_rec_module/~$log.docx" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img_rec_module/log.docx" afterPath="$PROJECT_DIR$/img_rec_module/log.docx" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/calbridgesensors/settings.py" afterPath="$PROJECT_DIR$/calbridgesensors/calbridgesensors/settings.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/apps.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/apps.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/models.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/models.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/signals.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/signals.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/templatetags/sensors_filters.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/templatetags/sensors_filters.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/tests.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/tests.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/utils.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/utils.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/sensors/views.py" afterPath="$PROJECT_DIR$/calbridgesensors/sensors/views.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/templates/base.html" afterPath="$PROJECT_DIR$/calbridgesensors/templates/base.html" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/templates/sensors/detail.html" afterPath="$PROJECT_DIR$/calbridgesensors/templates/sensors/detail.html" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/calbridgesensors/templates/sensors/index.html" afterPath="$PROJECT_DIR$/calbridgesensors/templates/sensors/index.html" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/expr.py" afterPath="$PROJECT_DIR$/expr.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img_rec_module/meas/calib4/img_59_{0}/img_59_{0}_(200, 300).txt" afterPath="$PROJECT_DIR$/img_rec_module/meas/calib4/img_59_{0}/img_59_{0}_(200, 300).txt" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img_rec_module/robust_reg/calib4/convergence.txt" afterPath="$PROJECT_DIR$/img_rec_module/robust_reg/calib4/convergence.txt" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="TRACKING_ENABLED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CoverageDataManager">
+    <SUITE FILE_PATH="coverage/bridge_settlement$rpi_socket.coverage" NAME="rpi_socket Coverage Results" MODIFIED="1528476257015" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/socket_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$img_rec.coverage" NAME="img_rec Coverage Results" MODIFIED="1531505699208" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$com_test.coverage" NAME="com_test Coverage Results" MODIFIED="1530316955745" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/communication_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$sig_proc.coverage" NAME="sig_proc Coverage Results" MODIFIED="1543134271472" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$HoughLineTest.coverage" NAME="HoughLineTest Coverage Results" MODIFIED="1532630083716" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$ImgCollector.coverage" NAME="ImgCollector Coverage Results" MODIFIED="1527205196026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$sig_proc_test.coverage" NAME="sig_proc_test Coverage Results" MODIFIED="1538154622062" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$sig_proc_old.coverage" NAME="sig_proc_old Coverage Results" MODIFIED="1543127247439" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$img_filter.coverage" NAME="img_filter Coverage Results" MODIFIED="1528245055279" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$communication.coverage" NAME="communication Coverage Results" MODIFIED="1530226403090" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/communication_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$FastDataMatrixTest.coverage" NAME="FastDataMatrixTest Coverage Results" MODIFIED="1532397075147" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$expr.coverage" NAME="expr Coverage Results" MODIFIED="1541875013335" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/bridge_settlement$sig_proc__1_.coverage" NAME="sig_proc (1) Coverage Results" MODIFIED="1543135009377" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/img_rec_module" />
+  </component>
+  <component name="DjangoConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)">
+    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file leaf-file-name="sig_proc_rob.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc_rob.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="20370">
+              <caret line="1366" column="28" lean-forward="false" selection-start-line="1366" selection-start-column="28" selection-end-line="1366" selection-end-column="28" />
+              <folding>
+                <element signature="e#0#10#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="sig_proc.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="182">
+              <caret line="1172" column="27" lean-forward="false" selection-start-line="1172" selection-start-column="27" selection-end-line="1172" selection-end-column="27" />
+              <folding>
+                <element signature="e#0#10#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="CSS File" />
+        <option value="JavaScript File" />
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>test_rec</find>
+      <find>test_inte</find>
+      <find>IMG_PROC</find>
+      <find>data_mask</find>
+      <find>data</find>
+      <find>fourier_exp</find>
+      <find>test_interac</find>
+      <find>fourier_ex</find>
+      <find>compare_images</find>
+      <find>fourier</find>
+      <find>houghline</find>
+      <find>FC</find>
+      <find>compare_data</find>
+      <find>gaussian_fit</find>
+      <find>num_sample</find>
+      <find>zero</find>
+      <find>zero_cros</find>
+      <find>debug</find>
+      <find>print</find>
+      <find>center_de</find>
+      <find>fit_x</find>
+      <find>line_</find>
+      <find>debias</find>
+      <find>gather_</find>
+      <find>visual</find>
+      <find>hough</find>
+      <find>hough_line</find>
+      <find>if hough</find>
+      <find>convergence</find>
+      <find>img_name</find>
+    </findStrings>
+    <replaceStrings>
+      <replace>=====</replace>
+      <replace>==</replace>
+      <replace>====</replace>
+      <replace>=</replace>
+      <replace>hxs</replace>
+      <replace>vys</replace>
+      <replace>r</replace>
+    </replaceStrings>
+    <dirStrings>
+      <dir>$PROJECT_DIR$/calbridgesensors/templates</dir>
+      <dir>$PROJECT_DIR$/calbridgesensors</dir>
+      <dir>$PROJECT_DIR$</dir>
+      <dir>$PROJECT_DIR$/calbridgesensors/sensors</dir>
+    </dirStrings>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/ImgCollector.py" />
+        <option value="$PROJECT_DIR$/RPiCM.py" />
+        <option value="$PROJECT_DIR$/img_capture.py" />
+        <option value="$PROJECT_DIR$/testpic/rel_lumin.txt" />
+        <option value="$PROJECT_DIR$/testpic/rel_lumin_large.txt" />
+        <option value="$PROJECT_DIR$/testpic/gray_large.txt" />
+        <option value="$PROJECT_DIR$/testpic/gray.txt" />
+        <option value="$PROJECT_DIR$/img_rec_module/img_filter.py" />
+        <option value="$PROJECT_DIR$/socket_module/sock.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/meas.txt" />
+        <option value="$PROJECT_DIR$/img_rec_module/img_20_1_meas.txt" />
+        <option value="$PROJECT_DIR$/img_rec_module/img_20_3_meas.txt" />
+        <option value="$PROJECT_DIR$/socket_module/server_socket.py" />
+        <option value="$PROJECT_DIR$/socket_module/rpi_socket.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/templatetags/__init__.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/urls.py" />
+        <option value="$PROJECT_DIR$/communication_module/communication.py" />
+        <option value="$PROJECT_DIR$/communication_module/com_test.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/calbridgesensors/urls.py" />
+        <option value="$PROJECT_DIR$/RPiCam/cam.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/img_rec.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/FastDataMatrixTest.py" />
+        <option value="$PROJECT_DIR$/RPiCam/img_capture.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/meas/truth.txt" />
+        <option value="$PROJECT_DIR$/img_rec_module/HoughLineTest.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/Log.txt" />
+        <option value="$PROJECT_DIR$/calbridgesensors/static/plotly.css" />
+        <option value="$PROJECT_DIR$/calbridgesensors/static/plotly.js" />
+        <option value="$PROJECT_DIR$/calbridgesensors/calbridgesensors/settings.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/signals.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/templates/sensors/index.html" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/templatetags/sensors_filters.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/views.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/utils.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/tests.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/templates/sensors/detail.html" />
+        <option value="$PROJECT_DIR$/calbridgesensors/templates/base.html" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/apps.py" />
+        <option value="$PROJECT_DIR$/calbridgesensors/sensors/models.py" />
+        <option value="$PROJECT_DIR$/expr.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/sig_proc_old.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/sig_proc_test.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/robust_reg/calib4/convergence.txt" />
+        <option value="$PROJECT_DIR$/img_rec_module/sig_proc_rob.py" />
+        <option value="$PROJECT_DIR$/img_rec_module/sig_proc.py" />
+      </list>
+    </option>
+  </component>
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsFlowSettings">
+    <service-enabled>false</service-enabled>
+    <exe-path />
+    <annotation-enable>false</annotation-enable>
+    <other-services-enabled>false</other-services-enabled>
+    <auto-save>true</auto-save>
+  </component>
+  <component name="JsGulpfileManager">
+    <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="ProjectFrameBounds">
+    <option name="y" value="23" />
+    <option name="width" value="1680" />
+    <option name="height" value="955" />
+  </component>
+  <component name="ProjectInspectionProfilesVisibleTreeState">
+    <entry key="Project Default">
+      <profile-state>
+        <expanded-state>
+          <State>
+            <id />
+          </State>
+          <State>
+            <id>Python</id>
+          </State>
+        </expanded-state>
+        <selected-state>
+          <State>
+            <id>PyCompatibilityInspection</id>
+          </State>
+        </selected-state>
+      </profile-state>
+    </entry>
+  </component>
+  <component name="ProjectView">
+    <navigator currentView="ProjectPane" proportions="" version="1">
+      <flattenPackages />
+      <showMembers />
+      <showModules />
+      <showLibraryContents />
+      <hideEmptyPackages />
+      <abbreviatePackageNames />
+      <autoscrollToSource />
+      <autoscrollFromSource />
+      <sortByType />
+      <manualOrder />
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="Scratches" />
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="bridge_settlement" type="b2602c69:ProjectViewProjectNode" />
+              <item name="bridge_settlement" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="bridge_settlement" type="b2602c69:ProjectViewProjectNode" />
+              <item name="bridge_settlement" type="462c0819:PsiDirectoryNode" />
+              <item name="bright" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="bridge_settlement" type="b2602c69:ProjectViewProjectNode" />
+              <item name="bridge_settlement" type="462c0819:PsiDirectoryNode" />
+              <item name="img_rec_module" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="bridge_settlement" type="b2602c69:ProjectViewProjectNode" />
+              <item name="bridge_settlement" type="462c0819:PsiDirectoryNode" />
+              <item name="skewed" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="SearchEverywhereHistoryKey" value="&#9;FILE&#9;file:///Users/albertqu/Documents/7.Research/PEER Research/bridge_settlement/calbridgesensors/sensors/urls.py" />
+    <property name="list.type.of.created.stylesheet" value="CSS" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/img_rec_module/meas/calib4" />
+      <recent name="$PROJECT_DIR$/img_rec_module/meas/testpic" />
+      <recent name="$PROJECT_DIR$/img_rec_module/meas/img_2_1" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager" selected="Python.sig_proc (1)">
+    <configuration name="bridge_settlement" type="Python.DjangoServer" factoryName="Django server">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <option name="launchJavascriptDebuger" value="false" />
+      <option name="port" value="8000" />
+      <option name="host" value="" />
+      <option name="additionalOptions" value="" />
+      <option name="browserUrl" value="" />
+      <option name="runTestServer" value="false" />
+      <option name="runNoReload" value="false" />
+      <option name="useCustomRunCommand" value="false" />
+      <option name="customRunCommand" value="" />
+    </configuration>
+    <configuration name="expr" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/expr.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <configuration name="rpi_socket" type="PythonConfigurationType" factoryName="Python">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/socket_module" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/socket_module/rpi_socket.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <configuration name="sig_proc (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/img_rec_module" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/img_rec_module/sig_proc.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <configuration name="sig_proc" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/img_rec_module" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/img_rec_module/sig_proc_rob.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <configuration name="sig_proc_old" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/img_rec_module" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/img_rec_module/sig_proc_old.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <configuration name="sig_proc_test" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/img_rec_module" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="bridge_settlement" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/img_rec_module/sig_proc_test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <list size="7">
+      <item index="0" class="java.lang.String" itemvalue="Python.rpi_socket" />
+      <item index="1" class="java.lang.String" itemvalue="Django server.bridge_settlement" />
+      <item index="2" class="java.lang.String" itemvalue="Python.sig_proc" />
+      <item index="3" class="java.lang.String" itemvalue="Python.sig_proc_test" />
+      <item index="4" class="java.lang.String" itemvalue="Python.expr" />
+      <item index="5" class="java.lang.String" itemvalue="Python.sig_proc_old" />
+      <item index="6" class="java.lang.String" itemvalue="Python.sig_proc (1)" />
+    </list>
+    <recent_temporary>
+      <list size="5">
+        <item index="0" class="java.lang.String" itemvalue="Python.sig_proc (1)" />
+        <item index="1" class="java.lang.String" itemvalue="Python.sig_proc" />
+        <item index="2" class="java.lang.String" itemvalue="Python.sig_proc_old" />
+        <item index="3" class="java.lang.String" itemvalue="Python.expr" />
+        <item index="4" class="java.lang.String" itemvalue="Python.sig_proc_test" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="ShelveChangesManager" show_recycled="false">
+    <option name="remove_strategy" value="false" />
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7c953543-28f0-4e1c-a16e-80c967c3d32f" name="Default" comment="" />
+      <created>1527183985630</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1527183985630</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="0" y="23" width="1680" height="955" extended-state="0" />
+    <layout>
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32983682" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.5402951" sideWeight="0.50476193" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Scheme.REPL" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="true" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32983682" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32906976" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32906976" sideWeight="0.4952381" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32906976" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.34371185" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39954597" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32906976" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Concurrent Activities Diagram" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3291714" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
+    </layout>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="RECENTLY_FILTERED_USER_GROUPS">
+                <collection />
+              </option>
+              <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
+                <collection />
+              </option>
+              <option name="COLUMN_ORDER">
+                <list>
+                  <option value="0" />
+                  <option value="1" />
+                  <option value="2" />
+                  <option value="3" />
+                </list>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsContentAnnotationSettings">
+    <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <option name="time" value="35" />
+    </breakpoint-manager>
+    <watches-manager />
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/testpic/img_1_1/img_1_1_(600, 960).txt" />
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/calib4/img_59_{0}/img_59_{0}_(50, 550).txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/testpic/img_2_1/img_2_1_(200, 500).png" />
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/testpic/img_2_1/img_2_1_(600, 960).png" />
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/testpic/img_1_{0}/img_1_{0}_(200, 400)_r200_c400.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/testpic/img_23_{0}/img_23_{0}_(200, 400)_r200_c400.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/bright/img_193_{0}/img_193_{0}_(10, 20)_r10_c20.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/new_test/img_3_{0}/img_3_{0}_(10, 20).txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/new_test/img_3_{0}/img_3_{0}_(110, 120)_r110_c120.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/new_test/img_3_{0}/img_3_{0}_(110, 120).txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/errors.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="30">
+          <caret line="2" column="19" lean-forward="true" selection-start-line="2" selection-start-column="19" selection-end-line="2" selection-end-column="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/skewed/img_91_1.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calib4/img_59_4.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calib4/img_62_1.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/bright/img_81_1.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/sensors/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1290">
+          <caret line="91" column="23" lean-forward="false" selection-start-line="91" selection-start-column="23" selection-end-line="91" selection-end-column="23" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/calbridgesensors/urls.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/sensors/tests.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1410">
+          <caret line="97" column="34" lean-forward="false" selection-start-line="97" selection-start-column="34" selection-end-line="97" selection-end-column="34" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/sensors/views.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="450">
+          <caret line="41" column="29" lean-forward="false" selection-start-line="41" selection-start-column="29" selection-end-line="41" selection-end-column="29" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/sensors/models.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="193">
+          <caret line="54" column="44" lean-forward="false" selection-start-line="54" selection-start-column="44" selection-end-line="54" selection-end-column="44" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/calbridgesensors/settings.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="376">
+          <caret line="114" column="0" lean-forward="false" selection-start-line="114" selection-start-column="0" selection-end-line="114" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/RPiCam/img_capture.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1080">
+          <caret line="72" column="28" lean-forward="true" selection-start-line="72" selection-start-column="28" selection-end-line="72" selection-end-column="28" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharm2017.2/python_stubs/-2010535109/math.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="278">
+          <caret line="39" column="4" lean-forward="false" selection-start-line="39" selection-start-column="4" selection-end-line="39" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/scipy/optimize/minpack.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="278">
+          <caret line="510" column="4" lean-forward="false" selection-start-line="510" selection-start-column="4" selection-end-line="510" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/img_rec.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ambi/img_2_1.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ambi/img_1_4.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ambi/img_1_2.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ambi/img_1_1.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/convergence_v1.csv">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/calbridgesensors/sensors/apps.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="270">
+          <caret line="20" column="18" lean-forward="false" selection-start-line="20" selection-start-column="18" selection-end-line="20" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/expr.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="223" column="0" lean-forward="false" selection-start-line="223" selection-start-column="0" selection-end-line="223" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/matplotlib/axes/_base.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1726">
+          <caret line="1086" column="13" lean-forward="false" selection-start-line="1086" selection-start-column="13" selection-end-line="1086" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/calib4/soft_l1_img_113_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/calib4/soft_l1_img_113_1_errs.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/meas/convergence_rob.csv">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/calib4/convergence.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="249" lean-forward="false" selection-start-line="0" selection-start-column="249" selection-end-line="0" selection-end-column="249" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc_test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-2079">
+          <caret line="2598" column="0" lean-forward="true" selection-start-line="2598" selection-start-column="0" selection-end-line="2598" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_94_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_95_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_92_1_errs.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_91_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_91_1_errs.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_92_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_90_1_errs.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/skewed/soft_l1_img_90_1_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/calib5/soft_l1_img_14_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/robust_reg/calib5/soft_l1_img_11_lines.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc_old.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="175">
+          <caret line="826" column="29" lean-forward="true" selection-start-line="826" selection-start-column="29" selection-end-line="826" selection-end-column="29" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc_rob.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="20370">
+          <caret line="1366" column="28" lean-forward="false" selection-start-line="1366" selection-start-column="28" selection-end-line="1366" selection-end-column="28" />
+          <folding>
+            <element signature="e#0#10#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/img_rec_module/sig_proc.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="182">
+          <caret line="1172" column="27" lean-forward="false" selection-start-line="1172" selection-start-column="27" selection-end-line="1172" selection-end-column="27" />
+          <folding>
+            <element signature="e#0#10#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+  </component>
+</project>
