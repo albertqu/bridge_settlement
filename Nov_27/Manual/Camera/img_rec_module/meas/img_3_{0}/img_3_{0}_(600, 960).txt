@@ -1,0 +1,6 @@
+ksize:(7, 7), sigmax:0
+x: zero_crossing: -1, edge_converge: 629.1857205127992; 
+y: zero_crossing: -1, edge_converge: 303.2178917674522
+ksize:(9, 9), sigmax:0
+x: zero_crossing: -1, edge_converge: 626.2193034291377; 
+y: zero_crossing: -1, edge_converge: 279.055693080456
