@@ -7,7 +7,7 @@ import time
 
 class ImgCollector:
 
-    def __init__(self, dir='', ns='img', form='png', raw=False, num=1, serialize=True):
+    def __init__(self, dir='', ns='img', form='png', raw=False, num=1, serialize=True, step=True):
         if dir:
             if not os.path.exists(dir):
                 os.mkdir(dir)
@@ -20,6 +20,7 @@ class ImgCollector:
         self._form = form
         self._raw = raw
         self._num = num
+        self._step = step
         self.init_cam()
         if serialize:
             if os.path.exists("img_log.txt"):
@@ -34,7 +35,6 @@ class ImgCollector:
             rfile.close()
         else:
             self.counter = 1
-
 
     def change_ns(self, ns):
         self._ns = ns
@@ -65,7 +65,7 @@ class ImgCollector:
         self.cam.iso = 100
         self.cam.exposure_mode = 'off'
         time.sleep(3)
-        if self._num == 1:
+        if not self._step and self._num == 1:
             self.capture = self.uni_capture
         else:
             self.capture = self.multi_capture
@@ -86,8 +86,14 @@ class ImgCollector:
         self.cam.capture(self.name_scheme.format(self.counter), bayer=self._raw)
         self.counter += 1
 
-    def multi_capture(self):
-        file_list = [self.name_scheme.format("%d_%d" % (self.counter, i)) for i in range(1, self._num+1)]
+    def multi_capture(self, ambi=False):
+        if ambi:
+            self.cam.capture(self.name_scheme.format("%d_%d" % (self.counter, 0)), bayer=self._raw)
+        else:
+            self.multi_capture_base()
+
+    def multi_capture_base(self):
+        file_list = [self.name_scheme.format("%d_%d" % (self.counter, i)) for i in range(1, self._num + 1)]
         self.cam.capture_sequence(file_list, bayer=self._raw)
         self.counter += 1
 
