@@ -2,9 +2,6 @@ import cv2
 import numpy as np
 import csv
 from scipy.optimize import curve_fit
-from scipy.optimize import least_squares
-import heapq
-from decimal import Decimal
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
 
 """ ===================================
@@ -40,16 +37,8 @@ class Line:
 
 
 class HoughLine:
-    def __init__(self, theta=0, rho=0, x=None, data=None, new=True, r_bound=np.inf, loss='soft_l1'):
+    def __init__(self, theta=0, rho=0, x=None, data=None):
         if data is not None and x is not None:
-            self.x = x
-            self.data = data
-            self.r_bound = r_bound
-            self.loss = loss
-            if new:
-                self.reg = self.reg_new
-            else:
-                self.reg = self.reg_old
             self.reg(x, data)
         else:
             self._r = rho
@@ -57,7 +46,7 @@ class HoughLine:
             self._s = sin(theta)
             self._c = cos(theta)
 
-    def reg_old(self, x, data):
+    def reg(self, x, data):
         """D = hough_data_matrix(x, data)
         print(D)
         y = np.zeros(len(data))
@@ -65,17 +54,11 @@ class HoughLine:
         self._t = angle_interp(sine, cosine)
         self._s = sine
         self._c = cosine"""
-
-        x1, x2 = np.mean(x[:int(len(x) / 2)]), np.mean(x[int(len(x) / 2):])
-        y1, y2 = np.mean(data[:int(len(data) / 2)]), np.mean(data[int(len(data) / 2):])
-        theta0 = theta_pred(x1, y1, x2, y2)
-        p0 = [theta0, np.mean(x) * np.cos(theta0) + np.mean(data) * np.sin(theta0)]
-        """
         x1, x2 = x[0], x[-1]
         y1, y2 = data[0], data[-1]
         theta0 = theta_pred(x1, y1, x2, y2)
         # print(degrees(theta0))
-        p0 = [theta0, x1 * cos(theta0) + y1 * sin(theta0)]"""
+        p0 = [theta0, x1 * cos(theta0) + y1 * sin(theta0)]
         pm, vm = curve_fit(hough_line, x, data, p0=p0)
         # data_pred = hough_line(x, *pm)
         # print('PRED', data_pred)
@@ -95,66 +78,16 @@ class HoughLine:
         self._s = sin(angle)
         self._c = cos(angle)
 
-    def reg_new(self, x, data):
-        """D = hough_data_matrix(x, data)
-        print(D)
-        y = np.zeros(len(data))
-        cosine, sine, self._r = leastSquares(D, y)
-        self._t = angle_interp(sine, cosine)
-        self._s = sine
-        self._c = cosine"""
-        x1, x2 = np.mean(x[:int(len(x) / 2)]), np.mean(x[int(len(x) / 2):])
-        y1, y2 = np.mean(data[:int(len(data) / 2)]), np.mean(data[int(len(data) / 2):])
-        theta0 = theta_pred(x1, y1, x2, y2)
-        p0 = [theta0, np.mean(x) * np.cos(theta0) + np.mean(data) * np.sin(theta0)]
-        res = least_squares(self.get_err, p0, loss=self.loss, f_scale=3, args=(x, data))
-        # data_pred = hough_line(x, *pm)
-        # print('PRED', data_pred)
-        # res = data_pred - data
-        # print("RES", res)
-        # stderr = np.linalg.norm(res, 2)
-        # print("ERR", stderr)
-        # rankerr = res / stderr
-        # print("Z", rankerr)
-        angle = normalize_angle(res.x[0])
-        self._t = angle
-        self._r = res.x[1]
-        self._s = sin(angle)
-        self._c = cos(angle)
-
-    def get_err(self, vars, xs, ys):
-        return xs * np.cos(vars[0]) + ys * np.sin(vars[0]) - vars[1]
+    def extract_points(self, x_input):
+        x1 = int(x_input[0])
+        x2 = int(x_input[-1])
+        y1 = int(self.fit_x(x1))
+        y2 = int(self.fit_x(x2))
+        return (x1, y1), (x2, y2)
 
     def fit_x(self, x):
         # print(self._r, self._t)
-        return (self._r - x * self._c) / self._s if self._s != 0 else 'undef'
-
-    def debias(self, thres=1.0):
-        """ @:returns tuple with a) zerr_before: regression error before debias
-         b) zerr_after: regression error after debias"""
-        x, y = self.x, self.data
-        zero_hat_before = x * self._c + y * self._s - self._r
-        #y_hat_before = self.fit_x(x)
-        zerr_before = np.square(zero_hat_before)
-        #yerr_before = np.square(y_hat_before - y)
-        conds = (zerr_before - np.mean(zerr_before)) / np.std(zerr_before) <= thres
-        new_x, new_y = x[conds], y[conds]
-        self.x, self.data = new_x, new_y
-        self.reg(new_x, new_y)
-        zero_hat_after = new_x * self._c + new_y * self._s - self._r
-        #y_hat_after = self.fit_x(new_x)
-        zerr_after = np.square(zero_hat_after)
-        #yerr_after = np.square(y_hat_after - new_y)
-        return zerr_before, zerr_after
-
-    def point_gen(self):
-        x0 = self._c * self._r
-        y0 = self._s * self._r
-        x1 = int(x0 + 1000 * (-self._s))
-        y1 = int(y0 + 1000 * (self._c))
-        x2 = int(x0 - 1000 * (-self._s))
-        y2 = int(y0 - 1000 * (self._c))
-        return (x1, y1), (x2, y2)
+        return (self._r - x * self._c) / self._s
 
     def __str__(self):
         return 'hough line with cos:{0}, sin:{1}, rho:{2}, theta:{3}'.format(self._c, self._s,
@@ -162,8 +95,6 @@ class HoughLine:
 
     @staticmethod
     def intersect(l1, l2):
-        if l1._s == 0 and l2._s == 0:
-            return float('inf'), float('inf')
         if l1._s == 0:
             return l1._r, l2.fit_x(l1._r)
         elif l2._s == 0:
@@ -202,7 +133,13 @@ def angle_interp(s, c):
 def normalize_angle(angle):
     res = angle - (angle // FC) * FC
     return res
-
+    """
+    if QC < res < HC:
+        return res + HC
+    elif HC <= res <= TQC:
+        return res - HC
+    else:
+        return res"""
 
 
 def theta_pred(x1, y1, x2, y2):
@@ -252,31 +189,12 @@ def gaussian_curve(x_input, a, b, c_s):
 
 
 def hough_line(x, theta, rho):
-    return (rho - x * np.cos(theta)) / np.sin(theta)
+    return (rho - x * cos(theta)) / sin(theta)
 
 
 """ ===================================
 ========== MATRIX-ARRAY UTIL ==========
 ======================================= """
-
-
-class PseudoLL(list):
-    def push(self, obj):
-        self.append(obj)
-
-    def __getitem__(self, item):
-        return super().__getitem__(len(self) - 1 - item)
-
-    def __repr__(self):
-        rep = '['
-        ls = len(self)
-        for i in range(ls):
-            if i > 0:
-                rep += ', '
-            val = self[i]
-            rep += str(val)
-        rep += ']'
-        return rep
 
 
 class FastDataMatrix2D:
@@ -295,8 +213,10 @@ class FastDataMatrix2D:
         self.initialize()
 
     def segmentize(self, start, end):
-        assert 0 <= start < end <= self._data.shape[self._ax], \
-            "start: {0}, end: {1}, ax: {2}, index: {3}".format(start, end, self._ax, self._index)
+        assert 0 <= start < end <= self._data.shape[self._ax], "start: {0}, end: {1}, ax: {2}, index: {3}".format(start,
+                                                                                                                  end,
+                                                                                                                  self._ax,
+                                                                                                                  self._index)
         self.start = start
         self.end = end
 
@@ -384,6 +304,8 @@ def reg_pre_debias(ind, data):
             debiased_data.append(data[i])
             debiased_ind.append(ind[i])
     return debiased_ind, debiased_data
+
+
 
 
 # Polynomial Regression Tools 137-171
@@ -477,149 +399,6 @@ def hough_data_matrix(x, y):
 """ =======================================
 ========= EDGE DETECTION UTILS ============
 =========================================== """
-
-
-def gather_all(imgr, sample_int=30, gk=9, ks=-1):
-    """ @:returns centers_v, centers_h, list of possible centers gathered by algorithm, represented as (row, col)
-    """
-    dimr = imgr.shape[0]
-    dimc = imgr.shape[1]
-    # Image Processing
-    gksize = (gk, gk)
-    sigmaX = 0
-    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
-    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
-    # Parameter Setting
-    nr = sample_int
-    nc = sample_int
-    # Gathering Data
-    centers_v = []
-    centers_h = []
-    while nr < dimr:
-        data_x = sobelx[nr, :]
-        am = gather_centers(data_x, img[nr, :], centers_v, 0, nr, gaussian_center)
-        nr += sample_int
-    while nc < dimc:
-        data_y = sobely[:, nc]
-        raw_y = img[:, nc]
-        am = gather_centers(data_y, img[:, nc], centers_h, 1, nc, gaussian_center)
-        nc += sample_int
-    return centers_v, centers_h
-
-
-def gather_centers(grad, raw_data, reserve, ax, ax_n, center_method):
-    # Given grad and raw_data, insert the possible beam centers to reserves
-    max_grad, min_grad = get_maxi_mini(grad)
-    max_q, min_q, locs = bi_order_sort(max_grad, min_grad)
-    miu, sig = np.mean(raw_data), np.std(raw_data)
-    avant = lambda locs, i: locs[i - 1] if i - 1 >= 0 else None
-    apres = lambda locs, i: locs[i + 1] if i + 1 < len(locs) else None
-    i = 0
-    peaked = False
-    while (i < 2 or peaked) and max_q and min_q:
-        if peaked:
-            top = min_q.pop()
-            av = avant(locs, top[1])
-            if av in max_q and beam_bound(raw_data, miu, sig, av, top):
-                mid = center_method(grad, raw_data, av[0], top[0])
-                reserve.append((ax_n, mid) if ax == 0 else (mid, ax_n))
-                max_q.remove(av)
-                i += 1
-            peaked = False
-        else:
-            max_top = max_q.pop()
-            min_top = min_q[0]
-            if beam_bound(raw_data, miu, sig, max_top, min_top):
-                # print("MaxMin: ", max_top, min_top)
-                mid = center_method(grad, raw_data, max_top[0], min_top[0])
-                reserve.append((ax_n, mid) if ax == 0 else (mid, ax_n))
-                min_q.remove(min_top)
-                i += 1
-            else:
-                peaked = True
-                ap = apres(locs, max_top[1])
-                # QUICK FIX HERE, THINK MORE
-                if ap in min_q and beam_bound(raw_data, miu, sig, max_top, ap):
-                    # print("Max_apres: ", max_top, ap)
-                    mid = center_method(grad, raw_data, max_top[0], ap[0])
-                    reserve.append((ax_n, mid) if ax == 0 else (mid, ax_n))
-                    min_q.remove(ap)
-                    i += 1
-    return i
-
-
-def sup_tout(max_q, min_q, d, guess):
-    if guess == 0:
-        prem, deux = max_q, min_q
-    else:
-        prem, deux = min_q, max_q
-    if d in prem:
-        prem.remove(d)
-    elif d in prem:
-        deux.remove(d)
-    else:
-        raise RuntimeError("Tried to remove already removed term! {0}, {1}".format(d, guess))
-
-
-def get_maxi_mini(data, ceil=3):
-    # Given data, pluck the maxis and minis and store them in minpq and maxpq respectively
-    max_grad = []
-    min_grad = []
-    nat_select = lambda a, b: a if a[0] >= b[0] else b
-    maxer = lambda d: len(max_grad) < ceil or d > max_grad[0][0]
-    miner = lambda d: len(min_grad) < ceil or d > min_grad[0][0]
-    active_max, active_min = None, None
-
-    for i, d in enumerate(data):
-        if not active_max:
-            if maxer(d):
-                active_max = (d, i)
-        else:
-            curr = (d, i)
-            active_max = nat_select(curr, active_max)
-        if active_max and (check_crossing(data, i) or i == len(data) - 1):
-            heapq.heappush(max_grad, active_max)
-            if len(max_grad) > ceil:
-                heapq.heappop(max_grad)
-            active_max = None
-
-        if not active_min:
-            if miner(-d):
-                active_min = (-d, i)
-        else:
-            curr = (-d, i)
-            active_min = nat_select(curr, active_min)
-        if active_min and (check_crossing(data, i) or i == len(data) - 1):
-            heapq.heappush(min_grad, active_min)
-            if len(min_grad) > ceil:
-                heapq.heappop(min_grad)
-            active_min = None
-
-    return max_grad, min_grad
-
-
-def bi_order_sort(max_grad, min_grad):
-    # Takes in a max_grad and min_grad (heapq), returns a locational ordered array and a magnitude queue.
-    locs = []
-    max_q, min_q = PseudoLL(), PseudoLL()
-    while len(max_grad) and len(min_grad):
-        mat = heapq.heappop(max_grad)
-        mit = heapq.heappop(min_grad)
-        maxt, mint = [mat[1], None], [mit[1], None]
-        locs.append(maxt)
-        locs.append(mint)
-        max_q.push(maxt)
-        min_q.push(mint)
-    locs.sort(key=lambda pair: pair[0])
-    for i in range(len(locs)):
-        locs[i][1] = i
-    return max_q, min_q, locs
-
-
-def beam_bound(raw, miu, sig, a1, a2, thres=2):
-    # given raw data, determine if a1, a2 are beam bound entries, where a1, a2 are tuples [index, *(loc)]
-    return a1 and a2 and a2[1] == a1[1] + 1 and (raw[(a1[0] + a2[0]) // 2] - miu) / sig >= thres
 
 
 # Generic Helper
@@ -942,14 +721,6 @@ def gaussian_fitting_params(data, img_data, padding=10):
 ========================================= """
 
 
-def image_diff(img1, img2):
-    i1 = img1.astype(np.int16)
-    i2 = img2.astype(np.int16)
-    res = i1 - i2
-    dst = np.zeros_like(res, dtype=np.int8)
-    return cv2.normalize(res, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=8)
-
-
 def gauss_bg_deduce(x, img_data):
     # TODO: OPTIMIZE PERFORMANCE
     idata = img_data.extract_array()
@@ -1051,87 +822,98 @@ def folder_to_imgs(img_name_scheme, num_sample):
     return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample + 1)]
 
 
-def center_detect_hough(img):
-    centers_v, centers_h = gather_all(img)
-    centpointsv = np.zeros_like(img, dtype=np.uint8)
-    centpointsh = np.zeros_like(img, dtype=np.uint8)
-    #print(centers_v+centers_h)
-    for r, c in centers_v:
-        try:
-            centpointsv[int(r)][int(c)] = 255
-        except:
-            continue
-    for r, c in centers_h:
-        try:
-            centpointsh[int(r)][int(c)] = 255
-        except:
-            continue
-    linesv = cv2.HoughLines(centpointsv, 0.5, 0.005, 1)
-    linesh = cv2.HoughLines(centpointsh, 0.5, 0.005, 1)
-    all_lines = []
-    try:
-        for rho, theta in linesv[0]:
-            #print(rho, theta)
-            all_lines.append(HoughLine(theta, rho))
-    except:
-        print(linesv)
-    for rho, theta in linesh[0]:
-        all_lines.append(HoughLine(theta, rho))
-    ct = HoughLine.intersect(all_lines[0], all_lines[-1])
-    return ct
-
-
-def center_detect(ins, sample_int=30, gk=9, ks=-1, l='soft_l1'):
+# The image taken is flipped horizontally, result x should be img.shape[1] - x
+# The image sometimes has two peaks, try experimenting with different gaussian kernels
+def center_detect(img_name_scheme, num_sample, sample_int=50, gk=9, ks=-1, m=0, p=20,
+                       b=1, c=0):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    ambi, laser = cv2.imread(ins.format(0), 0), cv2.imread(ins.format(1), 0)
-    res = image_diff(laser, ambi)
-    centers_v, centers_h = gather_all(res, sample_int, gk, ks)
-    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
-    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
-    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
-    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
-    zv_err_av, zv_err_ap = line_v.debias()
-    zh_err_av, zh_err_ap = line_h.debias()
-    return HoughLine.intersect(line_h, line_v)
+    imgr = test_noise_reduce(img_name_scheme, num_sample)[0]
+    dimr = imgr.shape[0]
+    dimc = imgr.shape[1]
+    # Image Processing
+    gksize = (gk, gk)
+    sigmaX = 0
+    img = cv2.GaussianBlur(imgr, gksize, sigmaX)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=ks)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=ks)
+    # ------------------------------------------------------------
+    # Parameter Setting
+    METHODS = {0: gaussian_fitting, 1: poly_fitting, 2: edge_centroid,
+               3: zero_crossing, 4: edge_converge_base, 5: edge_converge_extreme}
+    edge_method = METHODS[m]
+    nr = sample_int
+    r_thresh = dimr / (sample_int * 3.0)
+    nc = sample_int
+    c_thresh = dimc / (sample_int * 3.0)
+    # ------------------------------------------------------------
+    # Gathering Data
+    hs = []
+    vs = []
+    while nr < dimr:
+        data_x = FM(sobelx, FM.HOR, nr)
+        if m < 3:
+            ec_x = edge_method(data_x, FM(img, FM.HOR, nr), p)
+        else:
+            ec_x = edge_method(data_x)
+        nr += sample_int
+        if ec_x == -1:
+            continue
+        else:
+            hs.append((nr - sample_int, ec_x))
 
+    while nc < dimc:
+        data_y = FM(sobely, FM.VER, nc)
+        if m < 3:
+            ec_y = edge_method(data_y, FM(img, FM.VER, nc), p)
+        else:
+            ec_y = edge_method(data_y)
+        nc += sample_int
+        if ec_y == -1:
+            continue
+        else:
+            vs.append((nc - sample_int, ec_y))
+    len_hs = len(hs)
+    len_vs = len(vs)
+    # ------------------------------------------------------------
+    # --------------- PRE-CHECK DATA VALUES ----------------------
+    hxs = np.zeros(len_hs)
+    hys = np.zeros(len_hs)
+    for i in range(len_hs):
+        hxs[i] = hs[i][1]
+        hys[i] = hs[i][0]
+    vxs = np.zeros(len_vs)
+    vys = np.zeros(len_vs)
+    for i in range(len_vs):
+        vxs[i] = vs[i][0]
+        vys[i] = vs[i][1]
+    x_valid = False
+    y_valid = False
+    # OUTLIER DETECTION   TODO: OPTIMIZE, THIS IS NAIVE
+    if len_hs >= r_thresh:
+        x_valid = True
+        hys, hxs = reg_pre_debias(hys, hxs)
+        line_a = HoughLine(x=hxs, data=hys)
+    if len_vs >= c_thresh:
+        y_valid = True
+        vxs, vys = reg_pre_debias(vxs, vys)
+        line_b = HoughLine(x=vxs, data=vys)
+    # ------------------------------------------------------------
+    # ----- Following Modules Handles Hough Line Drawing ---------
+    # ------------------------------------------------------------
+    # DATA RECORDING AND PROCESSING
+    if c == 1:
+        center_x = sum(hxs) / len_hs if x_valid else -1
+        center_y = sum(vys) / len_vs if y_valid else -1
+    else:
+        if x_valid and y_valid:
+            center_x, center_y = HoughLine.intersect(line_a, line_b)
+        else:
+            center_x = sum(hxs) / len_hs if x_valid else -1
+            center_y = sum(vys) / len_vs if y_valid else -1
+    # ---------------------------------------------------------
+    return center_x, center_y
 
-def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
-    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
-    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
-    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
-    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
-    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
-    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
-    zv_err_av, zv_err_ap = line_v.debias()
-    zh_err_av, zh_err_ap = line_h.debias()
-    return HoughLine.intersect(line_h, line_v)
-
-
-def expr2(series):
-    folder = '../calib5/'
-    ns = 'img_{0}.png'
-    ins = folder + ns
-    repertoire = []
-    i = 0
-    while i < len(series):
-        try:
-            ambi, laser = cv2.imread(ins.format(series[i]), 0), cv2.imread(ins.format(series[i+1]), 0)
-            res = image_diff(laser, ambi)
-        except:
-            print(ins.format(series[i]))
-        repertoire.append(center_detect_test(res))
-        i+= 2
-    for i, ct in enumerate(repertoire):
-        print((series[2*i], series[2*i+1]), ct)
-    CALIB_VAL = 118.6
-    print(repertoire)
-    i = 0
-    while i < len(repertoire):
-        dx, dy = (np.array(repertoire[i+1]) - np.array(repertoire[i])) / CALIB_VAL
-        print((series[2*i], series[2*i+1], series[2*i+2], series[2*i+3]), dx, dy)
-        i+=2
 
 
 def convergence_test_final(folder, ns):
@@ -1141,13 +923,12 @@ def convergence_test_final(folder, ns):
     startNP = 59
     startP = 80
     endP = 193
-    ls = range(5)
-    fwrite = open('meas/convergence_rob.csv', 'w')
+    ms = range(3)
+    fwrite = open('meas/convergence_v1.csv', 'w')
     cwriter = csv.writer(fwrite)
     cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
-    loss_types = ['huber', 'soft_l1', 'arctan', 'linear', 'cauchy']
-    for l in loss_types:
-        cwriter.writerow([l])
+    for m in ms:
+        cwriter.writerow([str(m)])
         # Consistency Cycled
         pv = 0
         pvs = 0
@@ -1161,8 +942,7 @@ def convergence_test_final(folder, ns):
             imgfile = "%s_{0}.png" % img_name
             # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
             try:
-                #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
-                x, y = center_detect(fpath, imgfile.format(1), l=l)
+                x, y = center_detect(fpath + imgfile, 5, m=m)
                 # PUT IN CSV
                 cwriter.writerow([str(i), str(x), str(y)])
                 # CONVERGENCE
@@ -1175,8 +955,7 @@ def convergence_test_final(folder, ns):
             imgfile = "%s_{0}.png" % img_name
             # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
             try:
-                #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
-                x, y = center_detect(fpath, imgfile.format(1), l=l)
+                x, y = center_detect(fpath + imgfile, 5, m=m)
                 # PUT IN CSV
                 cwriter.writerow([str(i), str(x), str(y)])
                 # CONVERGENCE
@@ -1196,16 +975,14 @@ def convergence_test_final(folder, ns):
                 # print(str(i), val)
         msepv = sqrt(pv / pvs)
         cvg = {'PicConsistency': msepv}
-        convergence[l] = cvg
+        convergence[m] = cvg
         variations.append(msepv)
     print(convergence)
     fwrite.close()
 
 if __name__ == '__main__':
     #print(center_detect('../calib4/img_59_{0}.png', 5))
-    #convergence_test_final('calib4/', 'img_{0}')
-    repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
-
+    convergence_test_final('calib4/', 'img_{0}')
 
 
 
