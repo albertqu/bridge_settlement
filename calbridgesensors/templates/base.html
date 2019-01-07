@@ -74,31 +74,45 @@
         .dropitem {
             float: none;
             color: black;
-            padding: 12px 32px;
             text-decoration: none;
             display: block;
-            text-align: left;
+            padding: 10px 74px;
+            text-align: center;
+            margin: 0px 1.5% 0px 1.5%;
         }
 
         .dropmenu {
             display: none;
             position: absolute;
             background-color: aliceblue;
-            min-width: 160px;
+            width: 12%;
+            border-radius: 10px;
             box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
             z-index: 1;
+            padding-left: 0px;
+            padding-right: 0px;
         }
 
-        .dropdown .dropbtn {
+        .dropbtn {
             font-size: 16px;
-            border: none;
             outline: none;
             color: black;
-            padding: 14px 16px;
+            padding: 10px 8px;
             background-color: aliceblue;
             border-radius: 10px;
             list-style: none;
             font-family: inherit;
+            width: 133%;
+            border-color: aliceblue;
+        }
+
+        .dropdown {
+            float: left;
+            display: block;
+            margin: 3px 1% 3px 1%;
+            padding-left: 6px;
+            padding-right: 60px;
+            width: 10%;
         }
 
         .dropdown:hover .dropmenu {
@@ -107,28 +121,36 @@
 
         li.setview {
             background-color: aliceblue;
-            margin: auto 30px auto 30px;
+            margin: 3px 1.5% 3px 1.5%;
             list-style: none;
             border-radius: 10px;
-            padding: 10px 15px;
-            width: 110px;
+            padding: 10px 10px;
+            width: 12%;
             height: 20px;
+            text-align: center;
+        }
+
+        .info-box {
+            display: block;
+            margin-top: 20px;
         }
 
         .bar {
             display: table;
-            margin: 20px;
+            margin-top: 0px;
+            width: 90%;
+            margin-bottom: 0px;
+            margin-left: 40px;
+            margin-right: 40px;
         }
 
         .bar li {
             float: left;
         }
 
-        .dropdown {
-            float: left;
+        #myDiv {
             display: block;
-            padding-left: 40px;
-            padding-right: 40px;
+            margin-top: 5%;
         }
 
     </style>
