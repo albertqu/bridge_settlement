@@ -148,6 +148,22 @@ class HoughLine:
         #yerr_after = np.square(y_hat_after - new_y)
         return zerr_before, zerr_after
 
+    def debias_old(self, thres=1.0):
+        """ @:returns tuple with a) zerr_before: regression error before debias
+         b) zerr_after: regression error after debias
+         Uses Standard estimate error to filter out bad regressions.
+         """
+        x, y = self.x, self.data
+        y_hat_before = self.fit_x(x)
+        yerr_before = y_hat_before - y
+        conds = (yerr_before - np.mean(yerr_before)) / np.square(yerr_before) <= thres
+        new_x, new_y = x[conds], y[conds]
+        self.x, self.data = new_x, new_y
+        self.reg(new_x, new_y)
+        y_hat_after = self.fit_x(new_x)
+        yerr_after = np.square(y_hat_after - new_y)
+        return yerr_before, yerr_after
+
     def point_gen(self):
         x0 = self._c * self._r
         y0 = self._s * self._r
@@ -1105,7 +1121,7 @@ def center_detect_hough(img):
 
 # The image taken is flipped horizontally, result x should be img.shape[1] - x
 # The image sometimes has two peaks, try experimenting with different gaussian kernels
-def center_detect_test(img_name, sample_int=30, gk=9, ks=-1):
+def center_detect_test_old(img_name, sample_int=30, gk=9, ks=-1):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
@@ -1160,25 +1176,35 @@ def center_detect_test(img_name, sample_int=30, gk=9, ks=-1):
     return center_detect_hough(imgr)
 
 
-def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False):
+def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False, catch=None):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
     # TODO: 1. CENTER_VISUALIZATION WITH LINE DRAWN
     # TODO: 2. ERROR BEFORE AND AFTER
     imgr = cv2.imread(folder_path+img_name, 0)
+    ylim, xlim = imgr.shape
     centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
     centers_v, centers_h = np.array(centers_v), np.array(centers_h)
-    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
-    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+    try:
+        centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
+        centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+    except IndexError:
+        return -1, -1
+
 
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
     if visual:
-        namespace = 'robust_reg/{0}{1}_{2}'.format(folder_path[3:], l, img_name)
+        fn = lambda p, n: p[p.find(n)+len(n):]
+        namespace = os.path.join(ROOT_DIR, 'robust_reg/{0}{1}_{2}'.format(fn(folder_path, ROOT_DIR), l, img_name))
         vp1_av, vp2_av = line_v.point_gen()
         hp1_av, hp2_av = line_h.point_gen()
     zv_err_av, zv_err_ap = line_v.debias()
     zh_err_av, zh_err_ap = line_h.debias()
+    if catch is not None:
+        catch[1].append(sqrt(np.mean(zh_err_ap)))
+        catch[0].append(sqrt(np.mean(zv_err_ap)))
+
 
     if visual:
         xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
@@ -1208,7 +1234,13 @@ def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1'
         ax4.legend(['Before', 'After'])
         fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
         fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
-    return HoughLine.intersect(line_h, line_v)
+        plt.close('all')
+    x, y = HoughLine.intersect(line_h, line_v)
+    if x >= xlim or x < 0 or y < 0 or y >= ylim:
+        return -1, -1
+    return x, y
+
+
 
 
 def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False,
@@ -1256,6 +1288,8 @@ def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=Fa
         ax4.legend(['Before', 'After'])
         fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
         fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
+        plt.close(fig=fig1)
+        plt.close(fig=fig2)
     return HoughLine.intersect(line_h, line_v)
 
 
@@ -1349,11 +1383,21 @@ def center_detect_old(img, sample_int=50, gk=9, ks=-1, m=0, p=20,
     # ---------------------------------------------------------
     return center_x, center_y
 
+def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
+    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
+    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
+    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
+    zv_err_av, zv_err_ap = line_v.debias()
+    zh_err_av, zh_err_ap = line_h.debias()
+    return HoughLine.intersect(line_h, line_v)
 
-def expr2(series):
-    folder = '../calib5/'
-    ns = 'img_{0}.png'
-    ins = folder + 'img_{0}.png'
+def expr2(series, dossier, ns='img_{0}.png'):
+    folder = os.path.join(ROOT_DIR, dossier)
+    ins = os.path.join(folder, ns)
     repertoire = []
     i = 0
     while i < len(series):
@@ -1362,7 +1406,7 @@ def expr2(series):
             res = image_diff(laser, ambi)
         except:
             print(ins.format(series[i]))
-        repertoire.append(center_detect_invar(res, visual=True, folder_path=folder, img_name=ns.format(series[i+1])))
+        repertoire.append(center_detect_test(res))
         i+= 2
     for i, ct in enumerate(repertoire):
         print((series[2*i], series[2*i+1]), ct)
@@ -1375,90 +1419,237 @@ def expr2(series):
         i+=2
 
 
-def convergence_test_final(folder, ns):
-    offset = '../'
+def convergence_test_final(folder, ns, visual=False, tt='l'):
+    # tt: a, l, k, g
     convergence = {}
+    titres = []
     variations = []
     startNP = 59
     startP = 80
     endP = 193
-    ls = range(5)
-    fwrite = open('meas/convergence_rob.csv', 'w')
+    meas = os.path.join(ROOT_DIR, 'meas/')
+    fwrite = open(os.path.join(meas, 'convergence_{}.csv'.format(tt)), 'w')
     cwriter = csv.writer(fwrite)
     cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
     loss_types = ['huber', 'soft_l1', 'arctan', 'linear', 'cauchy']
-    for l in loss_types:
-        cwriter.writerow([l])
-        # Consistency Cycled
-        pv = 0
-        pvs = 0
-        rcount = 0
-        cvx = np.zeros(4)
-        cvy = np.zeros(4)
-        # print(g)
-        for i in range(startNP, startP):
-            img_name = ns.format(i)
-            fpath = offset + folder
-            imgfile = "%s_{0}.png" % img_name
-            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
-            try:
-                #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
-                x, y = center_detect(fpath, imgfile.format(1), l=l)
-                # PUT IN CSV
-                cwriter.writerow([str(i), str(x), str(y)])
-                # CONVERGENCE
-            except AttributeError:
-                print('No {0}'.format(fpath + imgfile))
-                pass
-        for i in range(startP, endP):
-            img_name = ns.format(i)
-            fpath = offset + folder
-            imgfile = "%s_{0}.png" % img_name
-            # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
-            try:
-                #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
-                x, y = center_detect(fpath, imgfile.format(1), l=l)
-                # PUT IN CSV
-                cwriter.writerow([str(i), str(x), str(y)])
-                # CONVERGENCE
-                # Record x, y, check rcount, refresh CONSISTENCY
-                cvx[rcount] = x
-                cvy[rcount] = y
-                rcount += 1
-                if rcount == 4:
-                    pv += np.var(cvx) + np.var(cvy)
-                    pvs += 1
+    krange = np.arange(-1, 8, 2)
+    grange = np.arange(1, 20, 2)
+    sl, sk, sg = tt == 'a' or tt == 'l', tt == 'a' or tt == 'k', tt == 'a' or tt == 'g'
+    swt = lambda ran, cond: ran if cond else range(0)
+    ls = range(np.prod([len(loss_types) if sl else 1, len(krange) if sk else 1, len(grange) if sg else 1]))
+    print(ls)
+    catchx, catchy = [], []
+    if tt == 'a':
+        for l in loss_types:
+            for ks in krange:
+                for gs in grange:
+                    catch = [[], []]
+                    com = [l, 'Sobel:{}'.format(ks), 'Gauss:{}'.format(gs)]
+                    cwriter.writerow(com)
+                    # Consistency Cycled
+                    pv = 0
+                    pvs = 0
                     rcount = 0
                     cvx = np.zeros(4)
                     cvy = np.zeros(4)
-            except AttributeError:
-                print('No {0}'.format(fpath + imgfile))
-                pass
-                # print(str(i), val)
-        msepv = sqrt(pv / pvs)
-        cvg = {'PicConsistency': msepv}
-        convergence[l] = cvg
-        variations.append(msepv)
-    print(convergence)
-    fwrite.close()
-    plt.figure(figsize=(20, 10))
-    plt.style.use(['seaborn-dark', 'seaborn-paper'])
-    plt.subplot(111)
-    plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
-    plt.xticks(ls, loss_types)
-    plt.ylabel('deviations(+/-px)')
-    plt.xlabel('loss functions')
-    plt.title('Convergence By Loss Function Rho')
-    plt.show()
+                    cond = visual and l == 'soft_l1' and ks == -1 and gs == 7
+                    # print(g)
+                    for i in range(startNP, startP):
+                        img_name = ns.format(i)
+                        fpath = os.path.join(ROOT_DIR, folder)
+                        imgfile = "%s_{0}.png" % img_name
+                        # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                        try:
+                            #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                            x, y = center_detect(fpath, imgfile.format(1), l=l, gk=gs, ks=ks, visual=cond, catch=catch)
+                            #                             # PUT IN CSV
+                            cwriter.writerow([str(i), str(x), str(y)])
+                            # CONVERGENCE
+                        except AttributeError:
+                            print('No {0}'.format(fpath + imgfile))
+                            pass
+                    for i in range(startP, endP):
+                        img_name = ns.format(i)
+                        fpath = os.path.join(ROOT_DIR, folder)
+                        imgfile = "%s_{0}.png" % img_name
+                        # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                        try:
+                            #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                            x, y = center_detect(fpath, imgfile.format(1), l=l, gk=gs, ks=ks, visual=cond, catch=catch)
+                            # PUT IN CSV
+                            cwriter.writerow([str(i), str(x), str(y)])
+                            # CONVERGENCE
+                            # Record x, y, check rcount, refresh CONSISTENCY
+                            cvx[rcount] = x
+                            cvy[rcount] = y
+                            rcount += 1
+                            if rcount == 4:
+                                pv += np.var(cvx) + np.var(cvy)
+                                pvs += 1
+                                rcount = 0
+                                cvx = np.zeros(4)
+                                cvy = np.zeros(4)
+                        except AttributeError:
+                            print('No {0}'.format(fpath + imgfile))
+                            pass
+                            # print(str(i), val)
+                    msepv = sqrt(pv / pvs)
+                    catchx.append(max(catch[0]))
+                    catchy.append(max(catch[1]))
+                    cvg = {'PicConsistency': msepv, 'Max_Reg_ErrX': catchx[-1], 'Max_Reg_ErrY': catchy[-1]}
+                    cwriter.writerow(cvg.items())
+                    convergence[com] = cvg
+                    variations.append(msepv)
+                    titres.append(com)
+        print(convergence)
+        font = {'family': 'normal',
+                'weight': 'bold',
+                'size': 22}
+        import matplotlib
+        matplotlib.rc('font', **font)
+        fig = plt.figure(figsize=(200, 100))
+        plt.style.use(['seaborn-dark', 'seaborn-paper'])
+        plt.subplot(311)
+        plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('deviations(+/-px)')
+        plt.xlabel('loss functions')
+        plt.title('Convergence By Loss Function Rho')
+        plt.subplot(312)
+        plt.plot(ls, catchx, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error X')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error X')
+        plt.subplot(313)
+        plt.plot(ls, catchy, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error Y')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error Y')
+        plt.show()
+        fig.savefig(os.path.join(meas, 'Convergence By All.png'))
+        print(titres[np.argmin(variations)])
+        fwrite.close()
+        plt.close('all')
+
+
+    elif tt == 'l':
+        for k, l in enumerate(loss_types):
+            catch = [[],[]]
+            com = [l]
+            cwriter.writerow(com)
+            # Consistency Cycled
+            pv = 0
+            pvs = 0
+            rcount = 0
+            cvx = np.zeros(4)
+            cvy = np.zeros(4)
+            kl = int(not visual) + k
+            # print(kl, k)
+            # print(g)
+            for i in range(startNP, startP):
+                img_name = ns.format(i)
+                fpath = os.path.join(ROOT_DIR, folder)
+                imgfile = "%s_{0}.png" % img_name
+                # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                try:
+                    # x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                    x, y = center_detect(fpath, imgfile.format(1), l=l, visual=True if kl == 0 else False, catch=catch)
+                    # PUT IN CSV
+                    cwriter.writerow([str(i), str(x), str(y)])
+                    # CONVERGENCE
+                except AttributeError:
+                    print('No {0}'.format(fpath + imgfile))
+                    pass
+            for i in range(startP, endP):
+                img_name = ns.format(i)
+                fpath = os.path.join(ROOT_DIR, folder)
+                imgfile = "%s_{0}.png" % img_name
+                # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                try:
+                    # x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                    x, y = center_detect(fpath, imgfile.format(1), l=l, visual=True if kl == 0 else False, catch=catch)
+                    # PUT IN CSV
+                    cwriter.writerow([str(i), str(x), str(y)])
+                    # CONVERGENCE
+                    # Record x, y, check rcount, refresh CONSISTENCY
+                    cvx[rcount] = x
+                    cvy[rcount] = y
+                    rcount += 1
+                    if rcount == 4:
+                        pv += np.var(cvx) + np.var(cvy)
+                        pvs += 1
+                        rcount = 0
+                        cvx = np.zeros(4)
+                        cvy = np.zeros(4)
+                except AttributeError:
+                    print('No {0}'.format(fpath + imgfile))
+                    pass
+                    # print(str(i), val)
+            msepv = sqrt(pv / pvs)
+            catchx.append(max(catch[0]))
+            catchy.append(max(catch[1]))
+            cvg = {'PicConsistency': msepv, 'Max_Reg_ErrX': catchx[-1], 'Max_Reg_ErrY': catchy[-1]}
+            cwriter.writerow(cvg.items())
+            convergence[l] = cvg
+            variations.append(msepv)
+            titres.append(com)
+        print(convergence)
+
+        fig = plt.figure(figsize=(10, 5))
+        plt.style.use(['seaborn-dark', 'seaborn-paper'])
+        plt.subplot(311)
+        plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('deviations(+/-px)')
+        plt.xlabel('loss functions')
+        plt.title('Convergence By Loss Function Rho')
+        plt.subplot(312)
+        plt.plot(ls, catchx, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error X')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error X')
+        plt.subplot(313)
+        plt.plot(ls, catchy, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error Y')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error Y')
+        plt.show()
+        fig.savefig(os.path.join(meas, 'Convergence By Loss Function Rho.png'))
+        print(titres[np.argmin(variations)])
+        fwrite.close()
+        plt.close('all')
+
+
+
 
 if __name__ == '__main__':
     #print(center_detect('../calib4/img_59_{0}.png', 5))
     #convergence_test_final('calib4/', 'img_{0}')
-    repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
-    """skewed = '../skewed/'
-    bright = '../bright/'
-    imgn = 'img_{0}_1.png'
+    #repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
+    import os
+    ROOT_DIR = '/Users/albertqu/Documents/7.Research/PEER Research/data'
+    repertoire = expr2([14, 11, 13, 12], 'camera_tests', ns='{0}.png')
+    """imgn = 'img_{0}_1.png'
+    imgn_mul = 'img_{0}'
+    test = os.path.join(ROOT_DIR, 'test1115/')
+    calib4 = os.path.join(ROOT_DIR, 'calib4/')
+    convergence_test_final(calib4, imgn_mul, visual=False, tt='a')"""
+    # skewed = os.path.join(ROOT_DIR, 'skewed/')
+    # bright = os.path.join(ROOT_DIR, 'bright/')
     #center_detect('../calib4/', 'img_113_1.png', visual=True)
+
+    """
+    for i in range(1, 13):
+        ns = 'img_{0}.png'.format(i)
+        try:
+            print(center_detect(test, ns))
+        except:
+            print('NON IDEE')"""
+    """
     for i in range(90, 96):
         ns = imgn.format(i)
         print(skewed + ns)

@@ -4,6 +4,7 @@ import csv
 from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
 import heapq
+import os
 from decimal import Decimal
 from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
 
@@ -1109,10 +1110,9 @@ def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
     return HoughLine.intersect(line_h, line_v)
 
 
-def expr2(series):
-    folder = '../calib5/'
-    ns = 'img_{0}.png'
-    ins = folder + ns
+def expr2(series, dossier, ns='img_{0}.png'):
+    folder = os.path.join(ROOT_PATH, dossier)
+    ins = os.path.join(folder, ns)
     repertoire = []
     i = 0
     while i < len(series):
@@ -1122,6 +1122,7 @@ def expr2(series):
         except:
             print(ins.format(series[i]))
         repertoire.append(center_detect_test(res))
+        print('Finished {}'.format((i, i+1)))
         i+= 2
     for i, ct in enumerate(repertoire):
         print((series[2*i], series[2*i+1]), ct)
@@ -1132,6 +1133,30 @@ def expr2(series):
         dx, dy = (np.array(repertoire[i+1]) - np.array(repertoire[i])) / CALIB_VAL
         print((series[2*i], series[2*i+1], series[2*i+2], series[2*i+3]), dx, dy)
         i+=2
+
+
+def expr3(series, dossier, writer=None, ns='img_{0}.png'):
+    folder = os.path.join(ROOT_PATH, dossier)
+    ins = os.path.join(folder, ns)
+    repertoire = []
+    i = 0
+    while i < len(series):
+        try:
+            ambi, laser = cv2.imread(ins.format(series[i]), 0), cv2.imread(ins.format(series[i+1]), 0)
+            res = image_diff(laser, ambi)
+        except:
+            print(ins.format(series[i]))
+            i+=2
+            continue
+        try:
+            xy = center_detect_test(res)
+        except:
+            xy = str(None)
+        repertoire.append(xy)
+        print('Finished {}'.format((i, i+1)))
+        i+= 2
+    for i, ct in enumerate(repertoire):
+        writer.writerow([[series[2*i], series[2*i+1]], ct])
 
 
 def convergence_test_final(folder, ns):
@@ -1202,9 +1227,17 @@ def convergence_test_final(folder, ns):
     fwrite.close()
 
 if __name__ == '__main__':
+    ROOT_PATH = '/Users/albertqu/Documents/7.Research/PEER Research/data'
     #print(center_detect('../calib4/img_59_{0}.png', 5))
-    #convergence_test_final('calib4/', 'img_{0}')
-    repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
+    #convergence_test_final('calib4/', 'img_{0}') # 1, 3,
+    #repertoire = expr2([121, 122, 123, 124, 125, 126,151, 152], 'camera_tests', ns='{0}.png')
+    #testmat = {'5m': [i for i in range(1, 121)], '10m': [i for i in range(195, 225)], '60m': list(range(121, 195))}
+    #testmat = {'20m': [i for i in range(225, 315)], '50m': list(range(435, 465))}
+    testmat = {'60m': [i for i in range(191, 195)]}
+    fwrite = open(os.path.join(ROOT_PATH, 'meas/lab_matrix2.csv'), 'a+')
+    cwriter = csv.writer(fwrite)
+    for folder, series in testmat.items():
+        rep = expr3(series, os.path.join(ROOT_PATH, folder), cwriter, ns='{0}.png')
 
 
 

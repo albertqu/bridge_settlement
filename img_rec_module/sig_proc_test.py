@@ -1364,10 +1364,13 @@ def test_interactive():
             break
         imgn = "img_%d_{0}" % int(number)
         print(imgn)
-        IMGDIR = "../calib4/"
+        ROOT_DIR = '/Users/albertqu/Documents/7.Research/PEER Research/data/'
+        IMGDIR = os.path.join(ROOT_DIR, "calib4/")
         #IMGDIR = "../skewed/"
-        ROOTMEAS = "meas/"
-        SAVEDIR =ROOTMEAS + IMGDIR[3:] + imgn + "/"
+        ROOTMEAS = os.path.join(ROOT_DIR,"meas/")
+        fn = lambda p, n: p[p.find(n) + len(n):]
+        SAVEDIR =os.path.join(ROOTMEAS, fn(IMGDIR, ROOT_DIR), imgn)
+        print(SAVEDIR)
         #SAVEDIR = ROOTMEAS + imgn + "/"
         # imgr = cv2.imread(IMGDIR + imgn + ".png")
         num_img = 3 if ROOTMEAS == 'testpic' else 5
@@ -1394,9 +1397,10 @@ def test_interactive():
         f_r_mask = data_masked(f_r, 0, 0, 0.9, 0.9)
         inv_r_mask = np.abs(np.fft.ifft2(f_r_mask))
         sobelx_r_fm, sobely_r_fm, gradient_r_fm = gradient_calc(inv_r_mask, ks=-1)
+        plt.ion()
         compare_images((sobelx, 'Sobel X'), (sobely, 'Sobel Y'), (gradient, 'Raw Gradient'), (magnitude_r, 'Mag Original'),
                        (sobelx_r_fm, 'SobelX Fourier', (sobely_r_fm, 'SobelY Fourier'), (gradient_r_fm, 'Gradient Fourier')),
-                       color_map='gray', suptitle=IMGDIR+imgn[:-4])
+                       color_map='gray')
         #img, sobelx, sobely, gradient = inv_r_mask, sobelx_r_fm, sobely_r_fm, gradient_r_fm
         plot_img(img)
         plot_img(gradient)
@@ -2429,7 +2433,7 @@ def error_calc(meas, truth):
 
 
 TRUTH_FILE = "meas/truth.txt"
-TRUTH = read_truth(TRUTH_FILE)
+#TRUTH = read_truth(TRUTH_FILE)
 
 
 """ =================================
@@ -2744,8 +2748,8 @@ if __name__ == '__main__':
     #test_old()
     #test('../bright/', 'img_193_{0}.png')
     #deviation()
-    #test_interactive()
-    fourier_expr()
+    test_interactive()
+    #fourier_expr()
     #test_record()
     #test_canny_detect()
 

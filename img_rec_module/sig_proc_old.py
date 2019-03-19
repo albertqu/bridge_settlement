@@ -981,8 +981,9 @@ def convergence_test_final(folder, ns):
     fwrite.close()
 
 if __name__ == '__main__':
-    #print(center_detect('../calib4/img_59_{0}.png', 5))
+    print(center_detect('../calib4/img_59_{0}.png', 5))
     convergence_test_final('calib4/', 'img_{0}')
+
 
 
 
