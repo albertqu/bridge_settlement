@@ -33,7 +33,7 @@ class SensorsHomeView(LoginRequiredMixin, TemplateView):
 @login_required(login_url='/accounts/login/')
 def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
-    readings = bridge.reading_set.all()
+    readings = bridge.rawreading_set.all()
     len_reading = len(readings)
     ground_zero = readings[len_reading - 1]
     ground_zero_x = ground_zero.x
@@ -75,7 +75,7 @@ def bridge_update(request, pk):
         except Bridge.DoesNotExist:
             return HttpResponse(content='Bridge Unregistered', status=412)
         br.update(request.POST)  # Should resolve all sorts of issues by passing a dictionary in
-        return HttpResponse('BONJOUR')
+        return HttpResponse('SUCCESS')
 
     @csrf_protect
     def protected_update(r, p):

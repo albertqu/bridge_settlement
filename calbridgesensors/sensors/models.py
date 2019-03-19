@@ -12,12 +12,13 @@ class Bridge(models.Model):
     class Meta:
         ordering = ["name"]
 
-    def __init__(self, *args, **kwargs):
-        super(Bridge, self).__init__(*args, **kwargs)
-        self.name = name_validate(self.name)
-
     def __str__(self):
         return self.name
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.name = name_validate(self.name)
+        super(Bridge, self).save()
 
     def latest_reading(self):
         r_set = self.rawreading_set.all()
@@ -85,7 +86,7 @@ class Bridge(models.Model):
     def check_buffer(self):
         latest_damage = self.get_damage_records()[0]
         return latest_damage.time_elapsed() >= BUFFER_TIME \
-               or len(self.reading_set.filter(time_taken__gte=latest_damage.logtime)) >= BUFFER_MEAS
+               or len(self.rawreading_set.filter(time_taken__gte=latest_damage.logtime)) >= BUFFER_MEAS
 
 
 class RawReading(models.Model):
@@ -128,7 +129,7 @@ class Reading(models.Model):
     theta = models.DecimalField(max_digits=4, decimal_places=2)
     phi = models.DecimalField(max_digits=4, decimal_places=2)
     psi = models.DecimalField(max_digits=4, decimal_places=2)
-    base = models.ForeignKey('RawReading', on_delete=models.PROTECT, unique_for_date="time_taken")
+    base = models.ForeignKey('RawReading', on_delete=models.PROTECT, null=True, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
     class Meta:
