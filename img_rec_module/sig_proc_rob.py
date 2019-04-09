@@ -57,6 +57,7 @@ class HoughLine:
             self._t = theta
             self._s = sin(theta)
             self._c = cos(theta)
+        self.debias = self.debias_y
 
     def reg_old(self, x, data):
         """D = hough_data_matrix(x, data)
@@ -130,25 +131,35 @@ class HoughLine:
         # print(self._r, self._t)
         return (self._r - x * self._c) / self._s if self._s != 0 else 'undef'
 
-    def debias(self, thres=1.0):
+    def debias_old(self, thres=1.0):
         """ @:returns tuple with a) zerr_before: regression error before debias
          b) zerr_after: regression error after debias"""
         x, y = self.x, self.data
         zero_hat_before = x * self._c + y * self._s - self._r
-        #y_hat_before = self.fit_x(x)
         zerr_before = np.square(zero_hat_before)
-        #yerr_before = np.square(y_hat_before - y)
         conds = (zerr_before - np.mean(zerr_before)) / np.std(zerr_before) <= thres
         new_x, new_y = x[conds], y[conds]
         self.x, self.data = new_x, new_y
         self.reg(new_x, new_y)
         zero_hat_after = new_x * self._c + new_y * self._s - self._r
-        #y_hat_after = self.fit_x(new_x)
         zerr_after = np.square(zero_hat_after)
-        #yerr_after = np.square(y_hat_after - new_y)
         return zerr_before, zerr_after
 
-    def debias_old(self, thres=1.0):
+    def debias_z(self, thres=1.0):
+        """ @:returns tuple with a) zerr_before: regression error before debias
+         b) zerr_after: regression error after debias"""
+        x, y = self.x, self.data
+        zero_hat_before = x * self._c + y * self._s - self._r
+        zerr_before = np.square(zero_hat_before)
+        conds = np.abs(zero_hat_before) / np.sqrt(np.sum(zerr_before)/len(zerr_before)) <= thres
+        new_x, new_y = x[conds], y[conds]
+        self.x, self.data = new_x, new_y
+        self.reg(new_x, new_y)
+        zero_hat_after = new_x * self._c + new_y * self._s - self._r
+        zerr_after = np.square(zero_hat_after)
+        return zerr_before, zerr_after
+
+    def debias_y(self, thres=1.0):
         """ @:returns tuple with a) zerr_before: regression error before debias
          b) zerr_after: regression error after debias
          Uses Standard estimate error to filter out bad regressions.
@@ -156,13 +167,15 @@ class HoughLine:
         x, y = self.x, self.data
         y_hat_before = self.fit_x(x)
         yerr_before = y_hat_before - y
-        conds = (yerr_before - np.mean(yerr_before)) / np.square(yerr_before) <= thres
+        yerrb2 = yerr_before ** 2
+        se_reg = np.sqrt(np.sum(yerrb2) / len(yerr_before))
+        conds = np.abs(yerr_before) / se_reg  <= thres
         new_x, new_y = x[conds], y[conds]
         self.x, self.data = new_x, new_y
         self.reg(new_x, new_y)
         y_hat_after = self.fit_x(new_x)
         yerr_after = np.square(y_hat_after - new_y)
-        return yerr_before, yerr_after
+        return yerrb2, yerr_after
 
     def point_gen(self):
         x0 = self._c * self._r
@@ -495,6 +508,13 @@ def hough_data_matrix(x, y):
         mat[i][0] = x[i]
         mat[i][1] = y[i]
     return mat
+
+
+def r2_sqe(y, yerr2):
+    ym = np.mean(y)
+    s_tot = np.sum(np.square(y-ym))
+    s_reg = np.sum(yerr2)
+    return 1 - s_reg/s_tot
 
 
 """ =======================================
@@ -1176,7 +1196,8 @@ def center_detect_test_old(img_name, sample_int=30, gk=9, ks=-1):
     return center_detect_hough(imgr)
 
 
-def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False, catch=None):
+def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z", visual=False, catch=None,
+                  saveopt=""):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
@@ -1192,15 +1213,21 @@ def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1'
     except IndexError:
         return -1, -1
 
-
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
     if visual:
         fn = lambda p, n: p[p.find(n)+len(n):]
         namespace = os.path.join(ROOT_DIR, 'robust_reg/{0}{1}_{2}'.format(fn(folder_path, ROOT_DIR), l, img_name))
         vp1_av, vp2_av = line_v.point_gen()
         hp1_av, hp2_av = line_h.point_gen()
-    zv_err_av, zv_err_ap = line_v.debias()
-    zh_err_av, zh_err_ap = line_h.debias()
+    if debias == 'z':
+        zv_err_av, zv_err_ap = line_v.debias_z()
+        zh_err_av, zh_err_ap = line_h.debias_z()
+    elif debias == "y":
+        zv_err_av, zv_err_ap = line_v.debias_y()
+        zh_err_av, zh_err_ap = line_h.debias_y()
+    else:
+        zv_err_av, zv_err_ap = line_v.debias_old()
+        zh_err_av, zh_err_ap = line_h.debias_old()
     if catch is not None:
         catch[1].append(sqrt(np.mean(zh_err_ap)))
         catch[0].append(sqrt(np.mean(zv_err_ap)))
@@ -1232,8 +1259,10 @@ def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1'
         ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
         ax4.set_title('VER Loss Before and After')
         ax4.legend(['Before', 'After'])
-        fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
-        fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
+        if debias == 'y':
+            fig2.suptitle("Hor R2: {} Ver R2: {}".format(r2_sqe(line_h.data, zh_err_ap), r2_sqe(line_v.data, zv_err_ap)))
+        fig1.savefig(namespace[:-4]+'_lines'+saveopt+namespace[-4:])
+        fig2.savefig(namespace[:-4] + '_errs' + saveopt+namespace[-4:])
         plt.close('all')
     x, y = HoughLine.intersect(line_h, line_v)
     if x >= xlim or x < 0 or y < 0 or y >= ylim:
@@ -1241,10 +1270,8 @@ def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1'
     return x, y
 
 
-
-
-def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=False,
-                        folder_path="../", img_name='.png'):
+def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z", visual=False,
+                        folder_path="../", img_name='.png', saveopt=""):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
     centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
@@ -1255,10 +1282,15 @@ def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=Fa
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
     if visual:
         namespace = 'robust_reg/{0}{1}_{2}'.format(folder_path[3:], l, img_name)
+        print(namespace)
         vp1_av, vp2_av = line_v.point_gen()
         hp1_av, hp2_av = line_h.point_gen()
-    zv_err_av, zv_err_ap = line_v.debias()
-    zh_err_av, zh_err_ap = line_h.debias()
+    if debias == 'z':
+        zv_err_av, zv_err_ap = line_v.debias()
+        zh_err_av, zh_err_ap = line_h.debias()
+    else:
+        zv_err_av, zv_err_ap = line_v.debias_y()
+        zh_err_av, zh_err_ap = line_h.debias_y()
 
     if visual:
         xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
@@ -1286,10 +1318,24 @@ def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', visual=Fa
         ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
         ax4.set_title('VER Loss Before and After')
         ax4.legend(['Before', 'After'])
-        fig1.savefig(namespace[:-4]+'_lines'+namespace[-4:])
-        fig2.savefig(namespace[:-4] + '_errs' + namespace[-4:])
-        plt.close(fig=fig1)
-        plt.close(fig=fig2)
+        fpath1 = os.path.join(ROOT_DIR, namespace[:-4]+'_lines'+saveopt+namespace[-4:])
+        fig1.savefig(fpath1)
+        print("Saved {}".format(fpath1))
+        fig2.savefig(os.path.join(ROOT_DIR, namespace[:-4] + '_errs' + saveopt+ namespace[-4:]))
+        plt.close("all")
+    return HoughLine.intersect(line_h, line_v)
+
+
+def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
+    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
+    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
+    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
+    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
+    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
+    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
+    zv_err_av, zv_err_ap = line_v.debias()
+    zh_err_av, zh_err_ap = line_h.debias()
     return HoughLine.intersect(line_h, line_v)
 
 
@@ -1383,17 +1429,6 @@ def center_detect_old(img, sample_int=50, gk=9, ks=-1, m=0, p=20,
     # ---------------------------------------------------------
     return center_x, center_y
 
-def center_detect_test(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
-    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
-    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
-    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
-    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
-    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
-    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
-    zv_err_av, zv_err_ap = line_v.debias()
-    zh_err_av, zh_err_ap = line_h.debias()
-    return HoughLine.intersect(line_h, line_v)
 
 def expr2(series, dossier, ns='img_{0}.png'):
     folder = os.path.join(ROOT_DIR, dossier)
@@ -1419,7 +1454,32 @@ def expr2(series, dossier, ns='img_{0}.png'):
         i+=2
 
 
-def convergence_test_final(folder, ns, visual=False, tt='l'):
+def expr2_visual(series, dossier, ns='img_{0}.png', visual=True, saveopt=""):
+    folder = os.path.join(ROOT_DIR, dossier)
+    ins = os.path.join(folder, ns)
+    repertoire = []
+    i = 0
+    while i < len(series):
+        try:
+            ambi, laser = cv2.imread(ins.format(series[i]), 0), cv2.imread(ins.format(series[i+1]), 0)
+            res = image_diff(laser, ambi)
+        except:
+            print(ins.format(series[i]))
+        repertoire.append(center_detect_invar(res, folder_path="../{}/".format(dossier),
+                                              img_name=ns.format(series[i]), visual=visual, saveopt=saveopt))
+        i+= 2
+    for i, ct in enumerate(repertoire):
+        print((series[2*i], series[2*i+1]), ct)
+    CALIB_VAL = 118.6
+    print(repertoire)
+    i = 0
+    while i < len(repertoire):
+        dx, dy = (np.array(repertoire[i+1]) - np.array(repertoire[i])) / CALIB_VAL
+        print((series[2*i], series[2*i+1], series[2*i+2], series[2*i+3]), dx, dy)
+        i+=2
+
+
+def convergence_test_final(folder, ns, visual=False, tt='d', saveopt=""):
     # tt: a, l, k, g
     convergence = {}
     titres = []
@@ -1428,7 +1488,7 @@ def convergence_test_final(folder, ns, visual=False, tt='l'):
     startP = 80
     endP = 193
     meas = os.path.join(ROOT_DIR, 'meas/')
-    fwrite = open(os.path.join(meas, 'convergence_{}.csv'.format(tt)), 'w')
+    fwrite = open(os.path.join(meas, 'convergence_{}{}.csv'.format(tt, saveopt)), 'w')
     cwriter = csv.writer(fwrite)
     cwriter.writerow(['Image Number', 'Center X', 'Center Y', 'StdDev Horizontal', 'Std Dev Vertical'])
     loss_types = ['huber', 'soft_l1', 'arctan', 'linear', 'cauchy']
@@ -1527,8 +1587,7 @@ def convergence_test_final(folder, ns, visual=False, tt='l'):
         plt.ylabel('Max Reg Error Y')
         plt.xlabel('loss functions')
         plt.title('Max Reg Error Y')
-        plt.show()
-        fig.savefig(os.path.join(meas, 'Convergence By All.png'))
+        fig.savefig(os.path.join(meas, 'Convergence By All{}.png'.format(saveopt)))
         print(titres[np.argmin(variations)])
         fwrite.close()
         plt.close('all')
@@ -1617,10 +1676,103 @@ def convergence_test_final(folder, ns, visual=False, tt='l'):
         plt.ylabel('Max Reg Error Y')
         plt.xlabel('loss functions')
         plt.title('Max Reg Error Y')
-        plt.show()
         fig.savefig(os.path.join(meas, 'Convergence By Loss Function Rho.png'))
         print(titres[np.argmin(variations)])
         fwrite.close()
+        plt.close('all')
+
+    elif tt == 'd':
+        for d in ['z', 'y', 'old']:
+            catch = [[], []]
+            com = ["debias with {}".format(d)]
+            cwriter.writerow(com)
+            # Consistency Cycled
+            pv = 0
+            pvs = 0
+            rcount = 0
+            cvx = np.zeros(4)
+            cvy = np.zeros(4)
+            cond = visual
+            # print(g)
+            for i in range(startNP, startP):
+                img_name = ns.format(i)
+                fpath = os.path.join(ROOT_DIR, folder)
+                imgfile = "%s_{0}.png" % img_name
+                # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                try:
+                    #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                    x, y = center_detect(fpath, imgfile.format(1), debias=d, visual=cond, catch=catch,
+                                         saveopt="{}_{}".format(saveopt, d))
+                    #                             # PUT IN CSV
+                    cwriter.writerow([str(i), str(x), str(y)])
+                    # CONVERGENCE
+                except AttributeError:
+                    print('No {0}'.format(fpath + imgfile))
+                    pass
+            for i in range(startP, endP):
+                img_name = ns.format(i)
+                fpath = os.path.join(ROOT_DIR, folder)
+                imgfile = "%s_{0}.png" % img_name
+                # FOR NULL ROW OR COLUMN, DO NOT COUNT THE STDDEV
+                try:
+                    #x, y = center_detect(fpath + imgfile, 5, m=m) TODO: RESOLVE THE CHANGE
+                    x, y = center_detect(fpath, imgfile.format(1), debias=d, visual=cond,
+                                         catch=catch, saveopt="{}_{}".format(saveopt,d))
+                    # PUT IN CSV
+                    cwriter.writerow([str(i), str(x), str(y)])
+                    # CONVERGENCE
+                    # Record x, y, check rcount, refresh CONSISTENCY
+                    cvx[rcount] = x
+                    cvy[rcount] = y
+                    rcount += 1
+                    if rcount == 4:
+                        pv += np.var(cvx) + np.var(cvy)
+                        pvs += 1
+                        rcount = 0
+                        cvx = np.zeros(4)
+                        cvy = np.zeros(4)
+                except AttributeError:
+                    print('No {0}'.format(fpath + imgfile))
+                    pass
+                    # print(str(i), val)
+            msepv = sqrt(pv / pvs)
+            catchx.append(max(catch[0]))
+            catchy.append(max(catch[1]))
+            cvg = {'PicConsistency': msepv, 'Max_Reg_ErrX': catchx[-1], 'Max_Reg_ErrY': catchy[-1]}
+            cwriter.writerow(cvg.items())
+            convergence[com] = cvg
+            variations.append(msepv)
+            titres.append(com)
+        print(convergence)
+        font = {'family': 'normal',
+                'weight': 'bold',
+                'size': 22}
+        fwrite.close()
+        import matplotlib
+        matplotlib.rc('font', **font)
+        ls = [0, 1, 2]
+        fig = plt.figure(figsize=(20,10))
+        plt.style.use(['seaborn-dark', 'seaborn-paper'])
+        plt.subplot(311)
+        plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('deviations(+/-px)')
+        plt.xlabel('loss functions')
+        plt.title('Convergence By Loss Function Rho')
+        plt.subplot(312)
+        plt.plot(ls, catchx, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error X')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error X')
+        plt.subplot(313)
+        plt.plot(ls, catchy, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
+        plt.xticks(ls, titres)
+        plt.ylabel('Max Reg Error Y')
+        plt.xlabel('loss functions')
+        plt.title('Max Reg Error Y')
+        fig.savefig(os.path.join(meas, 'Convergence By All{}.png'.format(saveopt)))
+        print(titres[np.argmin(variations)])
         plt.close('all')
 
 
@@ -1632,12 +1784,13 @@ if __name__ == '__main__':
     #repertoire = expr2([10, 11, 15, 14, 18, 19, 22, 23])
     import os
     ROOT_DIR = '/Users/albertqu/Documents/7.Research/PEER Research/data'
-    repertoire = expr2([14, 11, 13, 12], 'camera_tests', ns='{0}.png')
-    """imgn = 'img_{0}_1.png'
+    #repertoire = expr2_visual([14, 11, 13, 12], 'camera_tests', ns='{0}.png', visual=True, saveopt="_zeroloss")
+    imgn = 'img_{0}_1.png'
     imgn_mul = 'img_{0}'
     test = os.path.join(ROOT_DIR, 'test1115/')
     calib4 = os.path.join(ROOT_DIR, 'calib4/')
-    convergence_test_final(calib4, imgn_mul, visual=False, tt='a')"""
+    convergence_test_final(calib4, imgn_mul, visual=False, tt='d', saveopt="_debias")
+
     # skewed = os.path.join(ROOT_DIR, 'skewed/')
     # bright = os.path.join(ROOT_DIR, 'bright/')
     #center_detect('../calib4/', 'img_113_1.png', visual=True)

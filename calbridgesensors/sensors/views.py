@@ -35,9 +35,12 @@ def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
     readings = bridge.rawreading_set.all()
     len_reading = len(readings)
-    ground_zero = readings[len_reading - 1]
-    ground_zero_x = ground_zero.x
-    ground_zero_y = ground_zero.y
+    if len_reading:
+        ground_zero = readings[len_reading - 1]
+        ground_zero_x = ground_zero.x
+        ground_zero_y = ground_zero.y
+    else:
+        ground_zero_x, ground_zero_y = 0, 0
     calibrated = [(0.0, 0.0, None)] * len_reading
     calibratedx = [0.0] * len_reading
     calibratedy = [0.0] * len_reading

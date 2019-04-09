@@ -1,4 +1,4 @@
-from img_rec_module.sig_proc_test import HoughLine, angle_interp, normalize_angle
+from img_rec_module.sig_proc_test_v0 import HoughLine, angle_interp, normalize_angle
 import numpy as np
 from random import uniform
 from math import sin, cos, asin, acos, degrees

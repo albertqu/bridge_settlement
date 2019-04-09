@@ -1,186 +1,118 @@
 import picamera
 import os
 from fractions import Fraction
-import sys, traceback
 import time
 
 
 class ImgCollector:
 
-    def __init__(self, dir='', ns='img', form='png', raw=False, num=1, serialize=True):
+    def __init__(self, dir='', ns='img', ext='png', raw=False, ss=3000000, iso=100, num=2, serialize=True):
+        """ Constructor for ImgCollector
+        NOTE: Currently ImgCollector only works in Linux/Linux-like system
+        :param dir: directory for putting images, as well as the log file if serialize is True (_dir)
+        :param ns: name scheme (_ns)
+        :param ext: file extension, e.g. png (_ext)
+        :param raw: whether using raw images or not (_raw)
+        :param ss: shutter_speed for the camera (ss)
+        :param iso: iso value for camera (iso)
+        :param num: total number of pictures in a sequence (_num)
+        :param serialize: Whether logging counter to a text file. (ser)
+
+        Instance variable:
+            logfile: path of the logfile if serialize is True
+            counter: correspond to first dynamic part of image naming
+            curr: second dynamic part of image naming
+
+        """
         if dir:
             if not os.path.exists(dir):
-                os.mkdir(dir)
+                os.makedirs(dir)
             if dir[len(dir)-1] != '/':
                 dir += '/'
 
-        self.name_scheme = dir + ns + '_{0}.' + form
+        self.name_scheme = dir + ns + '_{0}.' + ext
         self._dir = dir
         self._ns = ns
-        self._form = form
+        self._ext = ext
         self._raw = raw
         self._num = num
+        self.ss = ss
+        self.iso = iso
+        self.ser = serialize
+        self.cam = None
+        self.curr = 0
         self.init_cam()
         if serialize:
-            if os.path.exists("img_log.txt"):
-                rfile = open("img_log.txt", "r")
+            self.logfile = self._dir + "img_log.txt"
+            if os.path.exists(self.logfile):
+                rfile = open(self.logfile, "r")
                 try:
                     self.counter = int(rfile.read())
                 except ValueError:
                     self.counter = 1
             else:
-                rfile = open("img_log.txt", "w")
+                rfile = open(self.logfile, "w")
                 self.counter = 1
             rfile.close()
         else:
             self.counter = 1
 
-
     def change_ns(self, ns):
         self._ns = ns
-        self.name_scheme = self._dir + self._ns + '_{0}.' + self._form
+        self.name_scheme = self._dir + self._ns + '_{0}.' + self._ext
 
-    def change_format(self, form):
-        self._form = form
-        self.name_scheme = self._dir + self._ns + '_{0}.' + self._form
+    def change_extension(self, ext):
+        self._ext = ext
+        self.name_scheme = self._dir + self._ns + '_{0}.' + self._ext
 
     def change_dir(self, dir):
         self._dir = dir
-        self.name_scheme = self._dir + self._ns + '_{0}.' + self._form
+        self.name_scheme = self._dir + self._ns + '_{0}.' + self._ext
 
     def change_num(self, num):
         self._num = num
-        if self._num == 1:
-            self.capture = self.uni_capture
-        else:
-            self.capture = self.multi_capture
+
+    def change_iso(self, iso):
+        self.iso = iso
+
+    def change_ss(self, ss):
+        self.ss = ss
 
     def init_cam(self):
-        self.cam = picamera.PiCamera(resolution=(640, 480))
-        time.sleep(2)
+        """Initiates the camera according to the iso, and shutterspeed set up upon initiation"""
+        self.cam = picamera.PiCamera(resolution=(2592, 1944), framerate=Fraction(1, 6), sensor_mode=3)
+        time.sleep(1)
         self.cam.led = False
-        self.cam.framerate = Fraction(1, 6)
+        self.cam.shutter_speed = self.ss
+        self.cam.iso = self.iso
+        time.sleep(10)
         self.cam.rotation = 180
-        self.cam.shutter_speed = 800000
-        self.cam.iso = 100
         self.cam.exposure_mode = 'off'
-        time.sleep(3)
-        if self._num == 1:
-            self.capture = self.uni_capture
-        else:
-            self.capture = self.multi_capture
+        self.cam.awb_mode = 'off'
+        self.cam.awb_gains = (Fraction(63, 128), Fraction(93, 64))
 
     def get_last_meas(self):
         if self._num == 1:
             return self.name_scheme.format(self.counter - 1)
         else:
-            return self._dir + self._ns + '_%d_{0}.' % (self.counter - 1) + self._form
+            return self._dir + self._ns + '_%d_{0}.' % (self.counter - 1) + self._ext
 
     def shutdown(self):
+        self.cam.framerate = Fraction(1, 1)
+        time.sleep(6)
         self.cam.close()
-        wfile = open("img_log.txt", "w")
-        wfile.write(str(self.counter))
-        wfile.close()
+        if self.ser:
+            wfile = open(self.logfile, "w")
+            wfile.write(str(self.counter))
+            wfile.close()
 
-    def uni_capture(self):
-        self.cam.capture(self.name_scheme.format(self.counter), bayer=self._raw)
-        self.counter += 1
-
-    def multi_capture(self):
-        file_list = [self.name_scheme.format("%d_%d" % (self.counter, i)) for i in range(1, self._num+1)]
-        self.cam.capture_sequence(file_list, bayer=self._raw)
-        self.counter += 1
-
-
-def main():
-    prompt = input("Welcome to the RPiCam Module. Type q for quick test, d for debug, or f / [other inputs] for full test.\n")
-    global recur
-    if prompt == 'q':
-        directory = 'quick_test'
-        name_pattern = 'img'
-        pic_format = 'png'
-        raw_image = False
-        num_meas = 1
-        recur = True
-    elif prompt == 'd':
-        camera_debug()
-        sys.exit()
-    else:
-        directory = input("Input a directory:\n")
-        name_pattern = input("Input a name pattern:\n")
-        pic_format = input("Input a picture format:\n")
-        raw_image = input("Raw image?[y/n]\n") in ['y', 'yes']
-        num_meas = int(input("Number of image samples for one measurement?\n"))
-        recur = False
-
-    while True:
-        try:
-            ic = ImgCollector(dir=directory, ns=name_pattern, form=pic_format, raw=raw_image, num=num_meas)
-            break
-        except:
-            directory = input("Ill-formated directory, type in another one: ")
-            traceback.print_exc(file=sys.stdout)
-
-    while True:
-        if recur:
-            ic.shutdown()
-            break
-
-        option = input("Type in an action or h for help:\n")
-        if option == 'h':
-            print("m: take measurement\n" +
-                  "r: show raw image status\n" +
-                  "cr: change raw image status\n" +
-                  "cf: change image format\n" +
-                  "cd: change directory\n" +
-                  "cn: change name\n" +
-                  "cm: change number of measurement\n" +
-                  "e: end the program")
-        elif option == 'm':
-            ic.capture()
-        elif option == 'r':
-            print(ic._raw)
-        elif option == 'cr':
-            ic._raw = input("Raw image?[y/n]\n") in ['y', 'yes']
-        elif option == 'cf':
-            ic.change_format(input("Input a picture format:\n"))
-        elif option == 'cd':
-            ic.change_dir(input("Input a directory:\n"))
-        elif option == 'cn':
-            ic.change_ns(input("Input a name pattern:\n"))
-        elif option == 'cm':
-            ic.change_num(int(input("Number of image samples for one measurement?\n")))
-        elif option == 'e':
-            ic.shutdown()
-            break
-
-
-def camera_debug():
-    DEBUG_DIR = 'debug/'
-    filename = DEBUG_DIR + 'shutter_{0}_iso_{1}_bright_{2}.jpeg'
-    analog = 'analog_gain: '
-    awb_gain = 'awb_gain: '
-    expo_modes = ['night', 'night_preview', 'very_long']
-    #flash_modes = ['off', 'redeye']
-    flash_modes = ['off']
-    shutter = [600000, 800000, 1000000]
-    with picamera.PiCamera(resolution=(640, 480)) as cam:
-        time.sleep(1)
-        print(analog + str(cam.analog_gain))
-        print(awb_gain + str(cam.awb_gains))
-        cam.framerate = Fraction(1, 6)
-        for ss in shutter:
-            #for br in brightness:
-            time.sleep(0.1)
-            cam.shutter_speed = ss
-            cam.brightness = 50
-            cam.capture(filename.format(ss), bayer=False)
+    def capture(self):
+        self.cam.capture(self.name_scheme.format("%d_%d" % (self.counter, self.curr)), bayer=self._raw)
+        self.curr += 1
+        if self.curr == self._num:
+            self.counter += 1
+            self.curr = 0
 
 
 if __name__ == "__main__":
     recur = True
-    while recur:
-        main()
-
-
-

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from img_rec_module.sig_proc_test import FM, compare_data_plots, compare_images
+from img_rec_module.sig_proc_test_v0 import FM, compare_data_plots, compare_images
 
 
 def identity(img):
