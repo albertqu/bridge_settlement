@@ -1,4 +1,5 @@
 import numpy as np
+from .utils import max_min, gauss_hat, gauss_2d
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
@@ -53,11 +54,11 @@ def improvedCost(x, y, x_test, y_test, start, end):
     return np.array(degrees), ps, np.array(c)
 
 
-
 # ---------  GAUSSIAN -------
 # Gaussian Regression Tools 184-210
 def gauss_data_matrix(data):
     return np.array([[1, x ** 2, x, 1] for x in data])
+
 
 def gauss_reg_bias(x, y, p0):
     """Given a set of x and y training points, this function

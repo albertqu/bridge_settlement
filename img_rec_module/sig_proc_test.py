@@ -138,10 +138,10 @@ class HoughLine:
     def point_gen(self):
         x0 = self._c * self._r
         y0 = self._s * self._r
-        x1 = int(x0 + 1000 * (-self._s))
-        y1 = int(y0 + 1000 * (self._c))
-        x2 = int(x0 - 1000 * (-self._s))
-        y2 = int(y0 - 1000 * (self._c))
+        x1 = int(x0 + 10000 * (-self._s))
+        y1 = int(y0 + 10000 * (self._c))
+        x2 = int(x0 - 10000 * (-self._s))
+        y2 = int(y0 - 10000 * (self._c))
         return (x1, y1), (x2, y2)
 
     def __str__(self):
@@ -208,38 +208,6 @@ def theta_pred(x1, y1, x2, y2):
 
 def sin_angle_from_points(dx, dy):
     return asin(abs(dy) / sqrt(dx ** 2 + dy ** 2))
-
-
-def poly_curve(params, x_input):
-    # params contains the coefficients that multiply the polynomial terms, in degree of lowest degree to highest degree
-    degree = len(params) - 1
-    x_range = [x_input[1], x_input[-1]]
-    x = np.linspace(x_range[0], x_range[1], 1000)
-    y = x * 0
-
-    for k in range(0, degree + 1):
-        coeff = params[k]
-        y = y + list(map(lambda z: coeff * z ** k, x))
-    return x, y
-
-
-def gauss_2d(x, y, a, b1, c_s1, b2, c_s2):
-    return a * np.exp(- ((x - b1) ** 2 / (2 * c_s1) + (y - b2) ** 2) / (2 * c_s2))
-
-
-def gauss_hat(x, a, b, c_s):
-    return a * np.exp(- (x - b) ** 2 / (2 * c_s))
-
-
-def gaussian_curve(x_input, a, b, c_s):
-    x_range = [x_input[1], x_input[-1]]
-    x = np.linspace(x_range[0], x_range[1], 1000)
-    y = a * np.exp(- (x - b) ** 2 / (2 * c_s))
-    return x, y
-
-
-def hough_line(x, theta, rho):
-    return (rho - x * np.cos(theta)) / np.sin(theta)
 
 
 """ ===================================
@@ -375,6 +343,89 @@ def r2_sqe(y, yerr2):
     s_tot = np.sum(np.square(y-ym))
     s_reg = np.sum(yerr2)
     return 1 - s_reg/s_tot
+
+
+def poly_curve(params, x_input):
+    # params contains the coefficients that multiply the polynomial terms, in degree of lowest degree to highest degree
+    degree = len(params) - 1
+    x_range = [x_input[1], x_input[-1]]
+    x = np.linspace(x_range[0], x_range[1], 1000)
+    y = x * 0
+
+    for k in range(0, degree + 1):
+        coeff = params[k]
+        y = y + list(map(lambda z: coeff * z ** k, x))
+    return x, y
+
+
+def gauss_2d(x, y, a, b1, c_s1, b2, c_s2):
+    return a * np.exp(- ((x - b1) ** 2 / (2 * c_s1) + (y - b2) ** 2) / (2 * c_s2))
+
+
+def gauss_hat(x, a, b, c_s):
+    return a * np.exp(- (x - b) ** 2 / (2 * c_s))
+
+
+def gaussian_curve(x_input, a, b, c_s):
+    x_range = [x_input[1], x_input[-1]]
+    x = np.linspace(x_range[0], x_range[1], 1000)
+    y = a * np.exp(- (x - b) ** 2 / (2 * c_s))
+    return x, y
+
+
+def hough_line(x, theta, rho):
+    return (rho - x * np.cos(theta)) / np.sin(theta)
+
+
+""" ===================================
+============= GENERAL UTILS ===========
+======================================= """
+
+
+# Generic Helper
+def max_min(data):
+    # Returns the maximum and minimum for the data
+    maxi = data[0]
+    max_ind = 0
+    mini = data[0]
+    min_ind = 0
+    for i in range(1, len(data)):
+        target = data[i]
+        if target > maxi:
+            maxi = target
+            max_ind = i
+        if target < mini:
+            mini = target
+            min_ind = i
+    return max_ind, min_ind
+
+
+def min_max(data, max, min):
+    """ Converts the data to min max space. """
+    g_diff = max - min
+    return [(d - min) / g_diff for d in data]
+
+
+def root_finding(x1, x2, y1, y2):
+    """Given two points on a line, finds its zero crossing root."""
+    return - y1 * (x2 - x1) / (y2 - y1) + x1
+
+
+def check_crossing(data, i):
+    return i + 1 < len(data) and check_cross(data[i], data[i+1])
+
+
+def check_cross(a, b):
+    # Checks whether two points are of opposite signs
+    return a * b < 0
+
+
+def round_up(num):
+    down = int(num)
+    if num - down > 0:
+        return num + 1
+    else:
+        return num
 
 
 """ =======================================
@@ -525,24 +576,6 @@ def beam_bound(raw, miu, sig, a1, a2, thres=2):
     return a1 and a2 and a2[1] == a1[1] + 1 and (raw[(a1[0] + a2[0]) // 2] - miu) / sig >= thres
 
 
-# Generic Helper
-def max_min(data):
-    # Returns the maximum and minimum for the data
-    maxi = data[0]
-    max_ind = 0
-    mini = data[0]
-    min_ind = 0
-    for i in range(1, len(data)):
-        target = data[i]
-        if target > maxi:
-            maxi = target
-            max_ind = i
-        if target < mini:
-            mini = target
-            min_ind = i
-    return max_ind, min_ind
-
-
 def edge_max_min(data):
     # Returns a *safe* edge maxi, mini for the data
     # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
@@ -563,34 +596,6 @@ def edge_max_min(data):
     maxi, mini = max_ind, min_ind
     assert data[maxi] >= value_thres and mini - maxi <= width_thres and maxi < mini
     return maxi, mini
-
-
-def min_max(data, max, min):
-    """ Converts the data to min max space. """
-    g_diff = max - min
-    return [(d - min) / g_diff for d in data]
-
-
-def root_finding(x1, x2, y1, y2):
-    """Given two points on a line, finds its zero crossing root."""
-    return - y1 * (x2 - x1) / (y2 - y1) + x1
-
-
-def check_crossing(data, i):
-    return i + 1 < len(data) and check_cross(data[i], data[i+1])
-
-
-def check_cross(a, b):
-    # Checks whether two points are of opposite signs
-    return a * b < 0
-
-
-def round_up(num):
-    down = int(num)
-    if num - down > 0:
-        return num + 1
-    else:
-        return num
 
 
 def smart_interval(start, end, data):
@@ -989,8 +994,8 @@ def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z
         vp1_ap, vp2_ap = line_v.point_gen()
         cenhs = list(zip(line_h.data, line_h.x))
         cenvs = list(zip(line_v.data, line_v.x))
-        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1)
-        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1)
+        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
+        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
 
         fig1 = plt.figure(figsize=(20, 10))
         ax1 = fig1.add_subplot(121)
@@ -1077,6 +1082,9 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         tot_err_av, tot_err_ap = np.concatenate((zv_err_av, zh_err_av)), np.concatenate((zv_err_ap, zh_err_ap))
         totseq2 = (np.sqrt(np.sum(tot_err_av) / len(tot_err_av)), np.sqrt(np.sum(tot_err_ap) / len(tot_err_ap)),
                                                     np.sqrt(np.max(tot_err_av)), np.sqrt(np.max(tot_err_ap)))
+    x, y = HoughLine.intersect(line_h, line_v)
+    if x >= xlim or x < 0 or y < 0 or y >= ylim:
+        return -1, -1, None
 
     if visual:
         xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
@@ -1085,15 +1093,15 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         vp1_ap, vp2_ap = line_v.point_gen()
         cenhs = list(zip(line_h.data, line_h.x))
         cenvs = list(zip(line_v.data, line_v.x))
-        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1)
-        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1)
-
+        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
+        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
         fig1 = plt.figure(figsize=(20, 10))
         ax1 = fig1.add_subplot(121)
         visualize_centers(imgr, centers_v, centers_h, ax1)
         ax1.set_title('Before')
         ax2 = fig1.add_subplot(122)
         visualize_centers(imgr, cenvs, cenhs, ax2)
+        ax2.scatter([x], [y], facecolor='green', linewidths=1)
         ax2.set_title('After')
         fig2 = plt.figure(figsize=(20, 10))
         ax3 = fig2.add_subplot(211)
@@ -1107,14 +1115,11 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         if debias == 'y':
             fig2.suptitle(show_metrics)
             fig1.suptitle(show_metrics)
-        fig1.savefig(namespace[:-4]+'_lines'+saveopt+namespace[-4:])
-        fig2.savefig(namespace[:-4] + '_errs' + saveopt+namespace[-4:])
+        fig1.savefig(namespace[:-4] + '_lines' + saveopt + namespace[-4:])
+        fig2.savefig(namespace[:-4] + '_errs' + saveopt + namespace[-4:])
         plt.close('all')
-    x, y = HoughLine.intersect(line_h, line_v)
-    if x >= xlim or x < 0 or y < 0 or y >= ylim:
-        return -1, -1, None
     if stat:
-        return x, y, (line_h.opti, line_v.opti)+hseq2+vseq2+totseq2+hseq+vseq+totseq
+        return x, y, (line_h.opti, line_v.opti) + hseq2 + vseq2 + totseq2 + hseq + vseq + totseq
     return x, y
 
 
@@ -1451,10 +1456,10 @@ def log_output(inpath, outpath, ns, series, invar=False, visual=False, saveopt="
                 ambi, laser = cv2.imread(imgseq.format(series[i]), 0), cv2.imread(imgseq.format(series[i + 1]), 0)
                 res_img = image_diff(laser, ambi)
                 id = "{}_{}".format(series[i], series[i + 1])
-                res = center_detect_base(res_img, inpath, ns.format(id), stat=True)
+                res = center_detect_base(res_img, inpath, ns.format(id), stat=True, visual=visual)
                 i+=2
             else:
-                res = center_detect(inpath, ns.format(series[i]), stat=True)
+                res = center_detect(inpath, ns.format(series[i]), stat=True, visual=visual)
                 id = str(series[i])
                 i+=1
             cwriter.writerow([id, res[0], res[1]] + (list(res[2]) if res[2] else []))
@@ -1475,11 +1480,13 @@ if __name__ == '__main__':
     imgn_mul = 'img_{0}'
     test = os.path.join(ROOT_DIR, 'test1115/')
     calib4 = os.path.join(ROOT_DIR, 'calib4/')
-    lab_series2 = os.path.join(ROOT_DIR, 'lab_series2')
+    lab_series2 = os.path.join(ROOT_DIR, 'lab_series2/')
+    metal_enclos = os.path.join(ROOT_DIR, 'metal_enclos/')
     #convergence_test_final(calib4, imgn_mul, visual=True, tt='d', saveopt="_debias")
     print(calib4)
     #log_output(calib4, ROOT_DIR, imgn, np.arange(59, 193), saveopt='METRICS_z')
-    log_output(lab_series2, ROOT_DIR, "{}.png", np.arange(1, 91), invar=True, saveopt='METRICS_z')
+    #log_output(lab_series2, ROOT_DIR, "{}.png", np.arange(1, 151), invar=True, visual=True, saveopt='METRICS_z')
+    log_output(metal_enclos, ROOT_DIR, "{}_2.png", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
     # skewed = os.path.join(ROOT_DIR, 'skewed/')
     # bright = os.path.join(ROOT_DIR, 'bright/')
     #center_detect('../calib4/', 'img_113_1.png', visual=True)
