@@ -13,7 +13,9 @@ This is the bridge settlement project development repository.
 - ROOT/
     - data/
         - SOME IMAGE FOLDERS
+        - e.g. calib4
         - meas/
         - robust_reg/
             - SOME IMAGE FOLDERS 
+            - e.g. calib4 (where all the hough goes)
     - git_repo
