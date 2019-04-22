@@ -15,5 +15,5 @@ This is the bridge settlement project development repository.
         - SOME IMAGE FOLDERS
         - meas/
         - robust_reg/
-        - SOME IMAGE FOLDERS 
+            - SOME IMAGE FOLDERS 
     - git_repo
