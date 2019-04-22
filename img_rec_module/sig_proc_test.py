@@ -7,7 +7,7 @@ import heapq
 from decimal import Decimal
 import matplotlib
 from math import sqrt, acos, asin, degrees, sin, cos
-from img_rec_module.fitting import leastSquares, improvedCost
+from fitting import leastSquares, improvedCost
 import matplotlib.pyplot as plt
 
 
@@ -1483,10 +1483,10 @@ if __name__ == '__main__':
     lab_series2 = os.path.join(ROOT_DIR, 'lab_series2/')
     metal_enclos = os.path.join(ROOT_DIR, 'metal_enclos/')
     #convergence_test_final(calib4, imgn_mul, visual=True, tt='d', saveopt="_debias")
-    print(calib4)
+    #print(calib4)
     #log_output(calib4, ROOT_DIR, imgn, np.arange(59, 193), saveopt='METRICS_z')
-    #log_output(lab_series2, ROOT_DIR, "{}.png", np.arange(1, 151), invar=True, visual=True, saveopt='METRICS_z')
-    log_output(metal_enclos, ROOT_DIR, "{}_2.png", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
+    log_output(lab_series2, ROOT_DIR, "{}.png", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
+    #log_output(metal_enclos, ROOT_DIR, "{}_2.png", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
     # skewed = os.path.join(ROOT_DIR, 'skewed/')
     # bright = os.path.join(ROOT_DIR, 'bright/')
     #center_detect('../calib4/', 'img_113_1.png', visual=True)
