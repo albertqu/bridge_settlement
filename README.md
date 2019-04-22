@@ -11,9 +11,9 @@ This is the bridge settlement project development repository.
 
 ## Folder Structure
 - ROOT/
- - data/
-  - SOME IMAGE FOLDERS
-  - meas/
-  - robust_reg/
-   - SOME IMAGE FOLDERS 
- - git_repo
+    - data/
+        - SOME IMAGE FOLDERS
+        - meas/
+        - robust_reg/
+        - SOME IMAGE FOLDERS 
+    - git_repo
