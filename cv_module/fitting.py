@@ -1,7 +1,5 @@
 import numpy as np
-from .utils import max_min, gauss_hat, gauss_2d
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+from utils import max_min, gauss_hat, gauss_2d
 
 
 # Generic Regression Tools 128-133

@@ -1,8 +1,8 @@
 import numpy as np
 import cv2, heapq
-from .utils import check_crossing, PseudoLL, max_min, check_cross, \
+from utils import check_crossing, PseudoLL, max_min, check_cross, \
     root_finding, FastDataMatrix2D, poly_curve, gauss_reg
-from .fitting import improvedCost
+from fitting import improvedCost
 
 """ =======================================
 ========= EDGE DETECTION UTILS ============

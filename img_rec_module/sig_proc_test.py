@@ -1056,14 +1056,6 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         catch[1].append(sqrt(np.mean(zh_err_ap)))
         catch[0].append(sqrt(np.mean(zv_err_ap)))
 
-    if debias == 'y':
-        C1, C2 = np.corrcoef(line_h.data, line_h.pred)[1, 0], np.corrcoef(line_v.data, line_v.pred)[1, 0]
-
-        metrics = r2_sqe(line_h.data, zh_err_ap), r2_sqe(line_v.data, zv_err_ap), C1, C2, C1 ** 2, C2 ** 2
-
-        show_metrics = "Hor R2: {} Ver R2: {}, C_Hor, {}, C_Ver: {}, Hor_C2: {}, Ver_C2: {}".format(*metrics)
-        print(show_metrics)
-
     if stat:
         lh_y, lh_pred = line_h.data, (line_h.pred if line_h.pred else line_h.fit_x(line_h.x))
         lv_y, lv_pred = line_v.data, (line_v.pred if line_v.pred else line_v.fit_x(line_v.x))
@@ -1112,9 +1104,6 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
         ax4.set_title('VER Loss Before and After')
         ax4.legend(['Before', 'After'])
-        if debias == 'y':
-            fig2.suptitle(show_metrics)
-            fig1.suptitle(show_metrics)
         fig1.savefig(namespace[:-4] + '_lines' + saveopt + namespace[-4:])
         fig2.savefig(namespace[:-4] + '_errs' + saveopt + namespace[-4:])
         plt.close('all')
@@ -1455,14 +1444,14 @@ def log_output(inpath, outpath, ns, series, invar=False, visual=False, saveopt="
             if invar:
                 ambi, laser = cv2.imread(imgseq.format(series[i]), 0), cv2.imread(imgseq.format(series[i + 1]), 0)
                 res_img = image_diff(laser, ambi)
-                id = "{}_{}".format(series[i], series[i + 1])
+                idx = "{}_{}".format(series[i], series[i + 1])
                 res = center_detect_base(res_img, inpath, ns.format(id), stat=True, visual=visual)
                 i+=2
             else:
                 res = center_detect(inpath, ns.format(series[i]), stat=True, visual=visual)
-                id = str(series[i])
+                idx = str(series[i])
                 i+=1
-            cwriter.writerow([id, res[0], res[1]] + (list(res[2]) if res[2] else []))
+            cwriter.writerow([idx, res[0], res[1]] + (list(res[2]) if res[2] else []))
         except AttributeError:
             print('No {0}'.format(imgseq.format(series[i])))
             i += 2 if invar else 1

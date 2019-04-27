@@ -1,57 +1,8 @@
 import cv2, csv
 import numpy as np
-from .img_proc import image_diff
-from .center_detect import center_detect_base, center_detect
-from .utils import model_contrast_plot
-
-
-def expr2(series, dossier, ns='img_{0}.png'):
-    folder = os.path.join(ROOT_DIR, dossier)
-    ins = os.path.join(folder, ns)
-    repertoire = []
-    i = 0
-    while i < len(series):
-        try:
-            ambi, laser = cv2.imread(ins.format(series[i]), 0), cv2.imread(ins.format(series[i+1]), 0)
-            res = image_diff(laser, ambi)
-        except:
-            print(ins.format(series[i]))
-        repertoire.append(center_detect_base(res))
-        i+= 2
-    for i, ct in enumerate(repertoire):
-        print((series[2*i], series[2*i+1]), ct)
-    CALIB_VAL = 118.6
-    print(repertoire)
-    i = 0
-    while i < len(repertoire):
-        dx, dy = (np.array(repertoire[i+1]) - np.array(repertoire[i])) / CALIB_VAL
-        print((series[2*i], series[2*i+1], series[2*i+2], series[2*i+3]), dx, dy)
-        i+=2
-
-
-def expr2_visual(series, dossier, ns='img_{0}.png', visual=True, saveopt=""):
-    folder = os.path.join(ROOT_DIR, dossier)
-    ins = os.path.join(folder, ns)
-    repertoire = []
-    i = 0
-    while i < len(series):
-        try:
-            ambi, laser = cv2.imread(ins.format(series[i]), 0), cv2.imread(ins.format(series[i+1]), 0)
-            res = image_diff(laser, ambi)
-        except:
-            print(ins.format(series[i]))
-        repertoire.append(center_detect_invar(res, folder_path="../{}/".format(dossier),
-                                              img_name=ns.format(series[i]), visual=visual, saveopt=saveopt))
-        i+= 2
-    for i, ct in enumerate(repertoire):
-        print((series[2*i], series[2*i+1]), ct)
-    CALIB_VAL = 118.6
-    print(repertoire)
-    i = 0
-    while i < len(repertoire):
-        dx, dy = (np.array(repertoire[i+1]) - np.array(repertoire[i])) / CALIB_VAL
-        print((series[2*i], series[2*i+1], series[2*i+2], series[2*i+3]), dx, dy)
-        i+=2
+from img_proc import image_diff
+from center_detect import center_detect_base, center_detect
+from utils import model_contrast_plot, path_prefix_free
 
 
 def convergence_test_final(folder, ns, visual=False, tt='d', saveopt=""):
@@ -193,7 +144,7 @@ def convergence_test_final(folder, ns, visual=False, tt='d', saveopt=""):
                     print('No {0}'.format(fpath + imgfile))
                     pass
                     # print(str(i), val)
-            msepv = sqrt(pv / pvs)
+            msepv = np.sqrt(pv / pvs)
             catchx.append(max(catch[0]))
             catchy.append(max(catch[1]))
             cvg = {'PicConsistency': msepv, 'Max_Reg_ErrX': catchx[-1], 'Max_Reg_ErrY': catchy[-1]}
@@ -262,7 +213,7 @@ def convergence_test_final(folder, ns, visual=False, tt='d', saveopt=""):
                         print('No {0}'.format(fpath + imgfile))
                         pass
                         # print(str(i), val)
-                msepv = sqrt(pv / pvs)
+                msepv = np.sqrt(pv / pvs)
                 catchx.append(max(catch[0]))
                 catchy.append(max(catch[1]))
                 cvg = {'PicConsistency': msepv, 'Max_Reg_ErrX': catchx[-1], 'Max_Reg_ErrY': catchy[-1]}
@@ -275,12 +226,11 @@ def convergence_test_final(folder, ns, visual=False, tt='d', saveopt=""):
         model_contrast_plot(titres, variations, catchx, catchy, meas, saveopt)
 
 
-def log_output(inpath, outpath, ns, series, invar=False, visual=False, saveopt=""):
+def log_output(inpath, outpath, ns, series, invar=False, visual=False, suffix='.png', saveopt=""):
     """ Runs center_detect with debug mode for all images in inpath+ns.format(irange), and output the test results
     in outpath/meas
-    ns: str, *{}*.png, e.g. img_{}_1.png
+    ns: str, *{}*.png, e.g. img_{}_1 NO SUFFIX
     """
-    imgseq = os.path.join(inpath, ns)
     fn = lambda p, n: p[p.find(n) + len(n) + 1:]
     fn2 = lambda segs: segs[-1] if segs[-1] else segs[-2]
     fwrite = open(os.path.join(outpath, 'meas/centerLog_{}_seriesLen{}_{}.csv'.format(path_prefix_free(inpath),
@@ -296,18 +246,16 @@ def log_output(inpath, outpath, ns, series, invar=False, visual=False, saveopt="
     while i < len(series):
         try:
             if invar:
-                ambi, laser = cv2.imread(imgseq.format(series[i]), 0), cv2.imread(imgseq.format(series[i + 1]), 0)
-                res_img = image_diff(laser, ambi)
-                id = "{}_{}".format(series[i], series[i + 1])
-                res = center_detect_base(res_img, inpath, ns.format(id), stat=True, visual=visual)
+                img_name = [ns.format(series[i]), ns.format(series[i+1])]
                 i+=2
             else:
-                res = center_detect(inpath, ns.format(series[i]), stat=True, visual=visual)
-                id = str(series[i])
+                img_name = ns.format(series[i])
                 i+=1
-            cwriter.writerow([id, res[0], res[1]] + (list(res[2]) if res[2] else []))
+            print(img_name)
+            res = center_detect(inpath, img_name, stat=True, invar=invar, visual=visual, suffix=suffix, ROOT_DIR=ROOT_DIR)
+            cwriter.writerow([img_name, res[0], res[1]] + (list(res[2]) if res[2] else []))
         except AttributeError:
-            print('No {0}'.format(imgseq.format(series[i])))
+            print('No {0}'.format(os.path.join(inpath, ns.format(series[i]))))
             i += 2 if invar else 1
     fwrite.close()
 
@@ -319,17 +267,16 @@ if __name__ == '__main__':
     import os
     ROOT_DIR = '/Users/albertqu/Documents/7.Research/PEER Research/data'
     #repertoire = expr2_visual([14, 11, 13, 12], 'camera_tests', ns='{0}.png', visual=True, saveopt="_imgdiff_change")
-    imgn = 'img_{0}_1.png'
+    imgn = 'img_{0}_1'
     imgn_mul = 'img_{0}'
     test = os.path.join(ROOT_DIR, 'test1115/')
     calib4 = os.path.join(ROOT_DIR, 'calib4/')
     lab_series2 = os.path.join(ROOT_DIR, 'lab_series2/')
     metal_enclos = os.path.join(ROOT_DIR, 'metal_enclos/')
     #convergence_test_final(calib4, imgn_mul, visual=True, tt='d', saveopt="_debias")
-    print(calib4)
-    #log_output(calib4, ROOT_DIR, imgn, np.arange(59, 193), saveopt='METRICS_z')
-    #log_output(lab_series2, ROOT_DIR, "{}.png", np.arange(1, 151), invar=True, visual=True, saveopt='METRICS_z')
-    log_output(metal_enclos, ROOT_DIR, "{}_2.png", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
+    log_output(calib4, ROOT_DIR, imgn, np.arange(59, 70), visual=True, saveopt='METRICS_z')
+    #log_output(lab_series2, ROOT_DIR, "{}", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
+    #log_output(metal_enclos, ROOT_DIR, "{}_2", np.arange(1, 11), invar=True, visual=True, saveopt='METRICS_z')
     # skewed = os.path.join(ROOT_DIR, 'skewed/')
     # bright = os.path.join(ROOT_DIR, 'bright/')
     #center_detect('../calib4/', 'img_113_1.png', visual=True)

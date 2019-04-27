@@ -234,6 +234,11 @@ def path_prefix_free(path, symbol='/'):
         return path[path.rfind(symbol)+len(symbol):]
 
 
+def fname_suffix_free(fname, symbol='.'):
+    return fname[:fname.rfind(symbol)]
+
+
+
 """======================================
 ========== VISUALIZATION UTIL ===========
 ========================================= """

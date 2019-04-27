@@ -1,8 +1,10 @@
 import numpy as np
 import cv2, os
 import matplotlib.pyplot as plt
-from .edge_detection import gather_all
-from .analytic_geom import HoughLine
+from edge_detection import gather_all
+from analytic_geom import HoughLine
+from utils import visualize_centers, path_prefix_free, fname_suffix_free
+from img_proc import image_diff
 
 
 def center_detect_hough(img):
@@ -36,77 +38,34 @@ def center_detect_hough(img):
 
 
 def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z", norm=1, visual=False,
-                  catch=None, stat=False,
-                  saveopt=""):
+                  catch=None, stat=False, invar=True, suffix='.png', saveopt="", **kwargs):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
-    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    # TODO: CHANGE DEBIAS AND CHANGE VISUALIZATION PART TO HAVE:
-    # TODO: 1. CENTER_VISUALIZATION WITH LINE DRAWN
-    # TODO: 2. ERROR BEFORE AND AFTER
-    imgr = cv2.imread(os.path.join(folder_path, img_name), 0)
+    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!
+    img_name: str, name scheme of image, with NO SUFFIX
+    """
+    if invar:
+        if isinstance(img_name, str):
+            assert img_name.find('{}') != -1, "img_name should be of form [name]{} for invariance mode!"
+            ambi_n, laser_n = img_name.format(0), img_name.format(1)
+            idx = img_name.format("0_1")
+        else:
+            ambi_n, laser_n = img_name
+            idx = "{}_{}".format(ambi_n, laser_n)
+        ambi, laser = cv2.imread(os.path.join(folder_path, ambi_n+suffix), 0),\
+                      cv2.imread(os.path.join(folder_path, laser_n+suffix), 0)
+        imgr = image_diff(laser, ambi)
+        img_id = idx + suffix
+    else:
+        img_id = img_name + suffix
+        imgr = cv2.imread(os.path.join(folder_path, img_id), 0)
     if norm:
-        aut = np.empty_like(imgr, dtype=np.uint8)
         if norm == 1:
             imgr = cv2.normalize(imgr, imgr, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=8)
         else:
+            aut = np.empty_like(imgr, dtype=np.uint8)
             imgr = cv2.normalize(imgr, aut, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=8)
-    return center_detect_base(imgr, folder_path, img_name, sample_int, gk, ks, l, debias, visual, catch, stat, saveopt)
-
-
-def center_detect_invar(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z", visual=False,
-                        folder_path="../", img_name='.png', saveopt="", stat=False):
-    """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
-    hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!"""
-    centers_v, centers_h = gather_all(imgr, sample_int, gk, ks)
-    centers_v, centers_h = np.array(centers_v), np.array(centers_h)
-    centers_vx, centers_vy = centers_v[:, 1], centers_v[:, 0]
-    centers_hx, centers_hy = centers_h[:, 1], centers_h[:, 0]
-
-    line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
-    if visual:
-        namespace = 'robust_reg/{0}{1}_{2}'.format(folder_path[3:], l, img_name)
-        print(namespace)
-        vp1_av, vp2_av = line_v.point_gen()
-        hp1_av, hp2_av = line_h.point_gen()
-    if debias == 'z':
-        zv_err_av, zv_err_ap = line_v.debias()
-        zh_err_av, zh_err_ap = line_h.debias()
-    else:
-        zv_err_av, zv_err_ap = line_v.debias_y()
-        zh_err_av, zh_err_ap = line_h.debias_y()
-
-    if visual:
-        xv_av, xv_ap = np.arange(len(zv_err_av)), np.arange(len(zv_err_ap))
-        xh_av, xh_ap = np.arange(len(zh_err_av)), np.arange(len(zh_err_ap))
-        hp1_ap, hp2_ap = line_h.point_gen()
-        vp1_ap, vp2_ap = line_v.point_gen()
-        cenhs = list(zip(line_h.data, line_h.x))
-        cenvs = list(zip(line_v.data, line_v.x))
-        cv2.line(imgr, hp1_ap, hp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
-        cv2.line(imgr, vp1_ap, vp2_ap, (0, 0, 255), 1, lineType=cv2.LINE_AA)
-
-        fig1 = plt.figure(figsize=(20, 10))
-        ax1 = fig1.add_subplot(121)
-        visualize_centers(imgr, centers_v, centers_h, ax1)
-        ax1.set_title('Before')
-        ax2 = fig1.add_subplot(122)
-        visualize_centers(imgr, cenvs, cenhs, ax2)
-        ax2.set_title('After')
-        fig2 = plt.figure(figsize=(20, 10))
-        ax3 = fig2.add_subplot(211)
-        ax3.plot(xh_av, zh_err_av, 'mo-', xh_ap, zh_err_ap, 'bo-')
-        ax3.set_title('HOR Loss Before and After')
-        ax3.legend(['Before', 'After'])
-        ax4 = fig2.add_subplot(212)
-        ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
-        ax4.set_title('VER Loss Before and After')
-        ax4.legend(['Before', 'After'])
-        fpath1 = os.path.join(ROOT_DIR, namespace[:-4]+'_lines'+saveopt+namespace[-4:])
-        fig1.savefig(fpath1)
-        print("Saved {}".format(fpath1))
-        fig2.savefig(os.path.join(ROOT_DIR, namespace[:-4] + '_errs' + saveopt+ namespace[-4:]))
-        plt.close("all")
-    return HoughLine.intersect(line_h, line_v)
+    return center_detect_base(imgr, folder_path, img_id, sample_int, gk, ks, l, debias, visual, catch, stat, saveopt,
+                              **kwargs)
 
 
 def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z",
@@ -128,6 +87,7 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
     line_v, line_h = HoughLine(x=centers_vx, data=centers_vy), HoughLine(x=centers_hx, data=centers_hy, loss=l)
     if visual:
         if "ROOT_DIR" in globals():
+
             ROOT_DIR = globals()["ROOT_DIR"]
         else:
             ROOT_DIR = kwargs["ROOT_DIR"]
@@ -196,8 +156,8 @@ def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, 
         ax4.plot(xv_av, zv_err_av, 'mo-', xv_ap, zv_err_ap, 'bo-')
         ax4.set_title('VER Loss Before and After')
         ax4.legend(['Before', 'After'])
-        fig1.savefig(namespace[:-4] + '_lines' + saveopt + namespace[-4:])
-        fig2.savefig(namespace[:-4] + '_errs' + saveopt + namespace[-4:])
+        fig1.savefig(fname_suffix_free(namespace) + '_lines' + saveopt + '.png')
+        fig2.savefig(fname_suffix_free(namespace) + '_errs' + saveopt + '.png')
         plt.close('all')
     if stat:
         return x, y, (line_h.opti, line_v.opti) + hseq2 + vseq2 + totseq2 + hseq + vseq + totseq

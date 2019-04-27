@@ -1,8 +1,8 @@
 import numpy as np
 from math import sqrt, acos, asin, degrees, sin, cos
 from scipy.optimize import least_squares
-from .utils import root_finding
-from .fitting import leastSquares
+from utils import root_finding
+from fitting import leastSquares
 
 """ ===================================
 ========== ANALYTIC GEOMETRY ==========

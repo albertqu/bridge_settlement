@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from .utils import gauss_hat, gauss_reg
-from .edge_detection import extract_extrema
+from utils import gauss_hat, gauss_reg
+from edge_detection import extract_extrema
 
 """======================================
 ======== IMAGE PROCESSING UTIL ==========
