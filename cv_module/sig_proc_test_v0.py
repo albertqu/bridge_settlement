@@ -2,13 +2,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from mpl_toolkits.mplot3d import Axes3D
-#from img_rec_module import img_rec
-from random import randint
+
 import os
 import csv
-from datetime import datetime
-from math import atan, sqrt, tan, radians, acos, asin, degrees, sin, cos
+from math import sqrt, tan, radians, acos, asin, degrees, sin, cos
 
 
 """ ===================================

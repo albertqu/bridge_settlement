@@ -1,4 +1,4 @@
-from img_rec_module.sig_proc_test_v0 import FM
+from cv_module.sig_proc_test_v0 import FM
 import numpy as np
 from random import randint
 import traceback
