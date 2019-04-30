@@ -7,8 +7,8 @@ dest = "http://apps2.peer.berkeley.edu/caltrans/sensors/"+BRIDGE_NAME+"/update/"
 PASSWORD = "djioewfj34jod2jdoi3jr0jl983jsa"
 
 
-def send_data_to_server(x=0.0, y=0.0, z=0.0, theta=0.0, phi=0.0, psi=0.0, errors=None):
-    payload = {'x': x, 'y': y, 'z': z, 'theta': theta, 'phi': phi, 'psi': psi, 'errors': errors}
+def send_data_to_server(x=0.0, y=0.0, z=0.0, theta=0.0, phi=0.0, psi=0.0, errors=None, counter=-1):
+    payload = {'x': x, 'y': y, 'z': z, 'theta': theta, 'phi': phi, 'psi': psi, 'errors': errors, 'counter': counter}
     dt = datetime.now()
     cookies = {'csrftoken': encode(dt), 'time': str(dt)}
     r = requests.post(dest, data=payload, cookies=cookies)

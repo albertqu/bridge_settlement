@@ -1,5 +1,5 @@
 import numpy as np
-import cv2, os
+import cv2
 from edge_detection import gather_all
 from analytic_geom import HoughLine
 from img_proc import image_diff
@@ -9,32 +9,27 @@ from img_proc import image_diff
 ============== CENTER DETECT===============
 =========================================== """
 
-def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', norm=True, invar=True, suffix='.png', **kwargs):
+def center_detect(img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', norm=True, invar=True):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!
-    img_name: str, name scheme of image, with NO SUFFIX
+    img_name: str, name scheme of image, with SUFFIX (FOR deployment)
     """
     if invar:
         if isinstance(img_name, str):
             assert img_name.find('{}') != -1, "img_name should be of form [name]{} for invariance mode!"
             ambi_n, laser_n = img_name.format(0), img_name.format(1)
-            idx = img_name.format("0_1")
         else:
             ambi_n, laser_n = img_name
-            idx = "{}_{}".format(ambi_n, laser_n)
-        ambi, laser = cv2.imread(os.path.join(folder_path, ambi_n+suffix), 0),\
-                      cv2.imread(os.path.join(folder_path, laser_n+suffix), 0)
+        ambi, laser = cv2.imread(ambi_n, 0), cv2.imread(laser_n, 0)
         imgr = image_diff(laser, ambi)
-        img_id = idx + suffix
     else:
-        img_id = img_name + suffix
-        imgr = cv2.imread(os.path.join(folder_path, img_id), 0)
+        imgr = cv2.imread(img_name, 0)
     if norm:
         imgr = cv2.normalize(imgr, imgr, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=8)
-    return center_detect_base(imgr, folder_path, img_id, sample_int, gk, ks, l, **kwargs)
+    return center_detect_base(imgr, sample_int, gk, ks, l)
 
 
-def center_detect_base(imgr, folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', **kwargs):
+def center_detect_base(imgr, sample_int=30, gk=9, ks=-1, l='soft_l1'):
     """ Takes in preprocessed (ambient invariant or normalization) and output x, y [pixel]
     coordinates of the center of the cross hair
     centers_v: vertical line!  hs: horizontal slice!
