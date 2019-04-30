@@ -20,7 +20,14 @@ This is the bridge settlement project development repository.
             - e.g. calib4 (where all the hough goes)
     - git_repo
 
-SPEC
+
+    
+## Branch Structure
+- All changes for deployment goes to deploy branch
+- All changes for server stuff goes to master finally
+- Historical development kept in albert-cv-v0
+
+## SPEC
 Package         Version
 --------------- -------
 Django          2.0
@@ -31,4 +38,5 @@ pytz            2019.1
 setuptools      39.0.1 (41.0.1 on my local server)
 six             1.12.0
 smtplib/requests/email (should be by default there)
+
 
