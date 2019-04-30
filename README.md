@@ -19,3 +19,16 @@ This is the bridge settlement project development repository.
             - SOME IMAGE FOLDERS 
             - e.g. calib4 (where all the hough goes)
     - git_repo
+
+SPEC
+Package         Version
+--------------- -------
+Django          2.0
+django-environ  0.4.5
+pip             19.0.3
+python-dateutil 2.8.0
+pytz            2019.1
+setuptools      39.0.1 (41.0.1 on my local server)
+six             1.12.0
+smtplib/requests/email (should be by default there)
+
