@@ -3,39 +3,14 @@ import cv2, os
 import matplotlib.pyplot as plt
 from edge_detection import gather_all
 from analytic_geom import HoughLine
-from utils import visualize_centers, path_prefix_free, fname_suffix_free
+from utils import fname_suffix_free
+from visualization import visualize_centers
 from img_proc import image_diff
 
 
-def center_detect_hough(img):
-    centers_v, centers_h = gather_all(img)
-    centpointsv = np.zeros_like(img, dtype=np.uint8)
-    centpointsh = np.zeros_like(img, dtype=np.uint8)
-    #print(centers_v+centers_h)
-    for r, c in centers_v:
-        try:
-            centpointsv[int(r)][int(c)] = 255
-        except:
-            continue
-    for r, c in centers_h:
-        try:
-            centpointsh[int(r)][int(c)] = 255
-        except:
-            continue
-    linesv = cv2.HoughLines(centpointsv, 0.5, 0.005, 1)
-    linesh = cv2.HoughLines(centpointsh, 0.5, 0.005, 1)
-    all_lines = []
-    try:
-        for rho, theta in linesv[0]:
-            #print(rho, theta)
-            all_lines.append(HoughLine(theta, rho))
-    except:
-        print(linesv)
-    for rho, theta in linesh[0]:
-        all_lines.append(HoughLine(theta, rho))
-    ct = HoughLine.intersect(all_lines[0], all_lines[-1])
-    return ct
-
+""" =======================================
+============== CENTER DETECT===============
+=========================================== """
 
 def center_detect(folder_path, img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', debias="z", norm=1, visual=False,
                   catch=None, stat=False, invar=True, suffix='.png', saveopt="", **kwargs):

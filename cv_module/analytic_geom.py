@@ -1,39 +1,11 @@
 import numpy as np
-from math import sqrt, acos, asin, degrees, sin, cos
+from math import sqrt, asin, degrees, sin, cos
 from scipy.optimize import least_squares
 from utils import root_finding
-from fitting import leastSquares
 
 """ ===================================
 ========== ANALYTIC GEOMETRY ==========
 ======================================= """
-
-
-class Line:
-    inf = float('inf')
-
-    def __init__(self, a=inf, b=inf, p1=None, p2=None, data=None):
-        if p1 and p2:
-            self.point(p1, p2)
-        elif data:
-            self.reg(data)
-        else:
-            self.a = a
-            self.b = b
-
-    def reg(self, data):
-        D = np.array([[d[0], 1] for d in data])
-        y = np.array([d[1] for d in data])
-        self.a, self.b = leastSquares(D, y)
-
-    def point(self, p1, p2):
-        self.a = 1
-
-    @staticmethod
-    def intersect(l1, l2):
-        x = (l2.b - l1.b) / (l1.a - l2.a)
-        y = l1.a * x + l1.b
-        return x, y
 
 
 class HoughLine:
@@ -110,24 +82,6 @@ class HoughLine:
         zerr_after = np.square(zero_hat_after)
         return zerr_before, zerr_after
 
-    def debias_y(self, thres=1.0):
-        """ @:returns tuple with a) zerr_before: regression error before debias
-         b) zerr_after: regression error after debias
-         Uses Standard estimate error to filter out bad regressions.
-         """
-        x, y = self.x, self.data
-        y_hat_before = self.fit_x(x)
-        yerr_before = y_hat_before - y
-        yerrb2 = yerr_before ** 2
-        se_reg = np.sqrt(np.sum(yerrb2) / len(yerr_before))
-        conds = np.abs(yerr_before) / se_reg  <= thres
-        new_x, new_y = x[conds], y[conds]
-        self.x, self.data = new_x, new_y
-        self.reg(new_x, new_y)
-        y_hat_after = self.fit_x(new_x)
-        yerr_after = np.square(y_hat_after - new_y)
-        return yerrb2, yerr_after
-
     def point_gen(self):
         x0 = self._c * self._r
         y0 = self._s * self._r
@@ -159,25 +113,6 @@ QC = np.pi / 2
 HC = np.pi
 TQC = 3 * np.pi / 2
 FC = 2 * np.pi
-
-
-def angle_interp(s, c):
-    if c == 1.0:
-        return 0
-    elif s == 1.0:
-        return np.pi / 2
-    elif c == -1.0:
-        return np.pi
-    elif s == -1.0:
-        return np.pi * 3 / 2
-    elif c < 0 < s:
-        return acos(c)
-    elif s < 0 and c < 0:
-        return 2 * np.pi - acos(c)
-    elif s < 0 < c:
-        return asin(s) + 2 * np.pi
-    else:
-        return asin(s)
 
 
 def normalize_angle(angle):

@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.optimize import curve_fit
-import os, cv2, matplotlib
-import matplotlib.pyplot as plt
+import cv2
 
 """ ===================================
 ========== MATRIX-ARRAY UTIL ==========
@@ -101,28 +100,6 @@ FM = FastDataMatrix2D
 """ ===================================
 =========== REGRESSION UTILS ==========
 ======================================= """
-
-
-"""def std_dev(data):
-    std_dev = 0
-    len_data = len(data)
-    mean = sum(data) / len_data
-    for i in range(len_data):
-        std_dev += (data[i] - mean) ** 2
-    return np.sqrt(std_dev / len_data)"""
-
-
-def reg_pre_debias(ind, data):
-    sd = np.std(data)
-    miu = np.mean(data)
-    debiased_data = []
-    debiased_ind = []
-    for i in range(len(data)):
-        dev = abs((data[i] - miu) / sd)
-        if dev < 2:
-            debiased_data.append(data[i])
-            debiased_ind.append(ind[i])
-    return debiased_ind, debiased_data
 
 
 def gauss_reg(x, y, p0):
@@ -238,50 +215,4 @@ def fname_suffix_free(fname, symbol='.'):
     return fname[:fname.rfind(symbol)]
 
 
-
-"""======================================
-========== VISUALIZATION UTIL ===========
-========================================= """
-
-
-def visualize_centers(img, centers_v, centers_h, ax):
-    xsv = [c[1] for c in centers_v]
-    ysv = [c[0] for c in centers_v]
-    xsh = [c[1] for c in centers_h]
-    ysh = [c[0] for c in centers_h]
-    ax.imshow(img, cmap='gray')
-    ax.scatter(xsv, ysv, facecolor='blue', linewidths=1)
-    ax.scatter(xsh, ysh, facecolor='red', linewidths=1)
-
-
-def model_contrast_plot(titres, variations, mregx, mregy, path, saveopt):
-    font = {'family': 'normal',
-            'weight': 'bold',
-            'size': 22}
-    ls = np.arange(titres)
-    matplotlib.rc('font', **font)
-    fig = plt.figure(figsize=(200, 100))
-    plt.style.use(['seaborn-dark', 'seaborn-paper'])
-    plt.subplot(311)
-    plt.plot(ls, variations, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
-    plt.xticks(ls, titres)
-    plt.ylabel('deviations(+/-px)')
-    plt.xlabel('loss functions')
-    plt.title('Convergence By {}'.format(saveopt))
-    plt.subplot(312)
-    plt.plot(ls, mregx, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
-    plt.xticks(ls, titres)
-    plt.ylabel('Max Reg Error X')
-    plt.xlabel('loss functions')
-    plt.title('Max Reg Error X')
-    plt.subplot(313)
-    plt.plot(ls, mregy, color='#FA5B3D', marker='o', markeredgewidth=1, linestyle='-', linewidth=2)
-    plt.xticks(ls, titres)
-    plt.ylabel('Max Reg Error Y')
-    plt.xlabel('loss functions')
-    plt.title('Max Reg Error Y')
-    plt.show()
-    fig.savefig(os.path.join(path, 'Convergence By {}.png'.format(saveopt)))
-    print(titres[np.argmin(variations)])
-    plt.close('all')
 

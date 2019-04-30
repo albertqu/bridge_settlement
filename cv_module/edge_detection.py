@@ -1,8 +1,6 @@
 import numpy as np
 import cv2, heapq
-from utils import check_crossing, PseudoLL, max_min, check_cross, \
-    root_finding, FastDataMatrix2D, poly_curve, gauss_reg
-from fitting import improvedCost
+from utils import check_crossing, PseudoLL, FastDataMatrix2D, gauss_reg
 
 """ =======================================
 ========= EDGE DETECTION UTILS ============
@@ -79,19 +77,6 @@ def gather_centers(grad, raw_data, reserve, ax, ax_n, center_method):
     return i
 
 
-def sup_tout(max_q, min_q, d, guess):
-    if guess == 0:
-        prem, deux = max_q, min_q
-    else:
-        prem, deux = min_q, max_q
-    if d in prem:
-        prem.remove(d)
-    elif d in prem:
-        deux.remove(d)
-    else:
-        raise RuntimeError("Tried to remove already removed term! {0}, {1}".format(d, guess))
-
-
 def get_maxi_mini(data, ceil=3):
     # Given data, pluck the maxis and minis and store them in minpq and maxpq respectively
     max_grad = []
@@ -152,209 +137,10 @@ def beam_bound(raw, miu, sig, a1, a2, thres=2):
     return a1 and a2 and a2[1] == a1[1] + 1 and (raw[(a1[0] + a2[0]) // 2] - miu) / sig >= thres
 
 
-def edge_max_min(data):
-    # Returns a *safe* edge maxi, mini for the data
-    # TODO: OPTIMIZE THE WIDTH AND VALUE THRESHOLD
-    width_thres = 90
-    value_thres = 20
-    maxi = data[0]
-    max_ind = 0
-    mini = data[0]
-    min_ind = 0
-    for i in range(1, len(data)):
-        target = data[i]
-        if target > maxi:
-            maxi = target
-            max_ind = i
-        if target < mini:
-            mini = target
-            min_ind = i
-    maxi, mini = max_ind, min_ind
-    assert data[maxi] >= value_thres and mini - maxi <= width_thres and maxi < mini
-    return maxi, mini
-
-
 def smart_interval(start, end, data):
     start = 0 if start < 0 else start
     end = len(data) if end > len(data) else end
     return start, end
-
-
-def edge_preprocess(data, padding):
-    maxi, mini = edge_max_min(data)
-    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
-    return start, end
-
-
-# ZERO CROSSING (PEAK FINDING)
-def zero_crossing(data):
-    # Yields the center with zero-crossing method
-    maxi, mini = max_min(data)
-    cross = -1
-    cross_count = 0
-    for j in range(maxi, mini):
-        y1 = data[j]
-        x2 = j + 1
-        y2 = data[x2]
-        if check_cross(y1, y2):
-            cross = root_finding(j, x2, y1, y2)  # change to function later
-            cross_count += 1
-    return -1 if cross_count > 1 else cross
-
-
-# AVERAGE METHOD FOR EDGE CENTER FINDING
-def edge_converge_base(data):
-    maxi, mini = max_min(data)
-    width_thres = 70
-    if mini - maxi > width_thres:
-        return -1
-    else:
-        return (maxi + mini) / 2
-
-
-# PSEUDO EDGE (closest noise gradient change) CENTER FINDING
-def edge_converge_extreme(data):
-    maxi, mini = max_min(data)
-    width_thres = 70
-    if mini - maxi > width_thres:
-        return -1
-    emax = -1
-    emin = -1
-    maxflag = True
-    minflag = True
-    cmax = maxi
-    cmin = mini
-    while cmax > 0 and cmin < len(data) - 1 and (maxflag or minflag):
-        max2 = cmax - 1
-        maxy1, maxy2 = data[cmax], data[max2]
-        min2 = cmin + 1
-        miny1, miny2 = data[cmin], data[min2]
-        if check_cross(maxy1, maxy2) and maxflag:
-            emax = root_finding(cmax, max2, maxy1, maxy2)
-            maxflag = False
-        if check_cross(miny1, miny2) and minflag:
-            emin = root_finding(cmin, min2, miny1, miny2)
-            minflag = False
-        if maxflag:
-            cmax -= 1
-        if minflag:
-            cmin += 1
-    return -1 if (emax == -1 or emin == -1) else (emax + emin) / 2
-
-
-def extract_extrema(data):
-    len_data = len(data)
-    mean = sum(data) / len_data
-    std_dev = 0
-    for x in data:
-        std_dev += (x - mean) ** 2
-    std_dev = np.sqrt(std_dev / len_data)
-    signifmax = []
-    signifmin = []
-    coeff = 3
-    for i, x in enumerate(data):
-        diff = (x - mean) / std_dev
-        if diff >= coeff:
-            signifmax.append(i)
-        elif diff <= -coeff:
-            signifmin.append(i)
-    return signifmax, signifmin
-
-
-# CENTROID METHOD FOR EDGE CENTER FINDING
-def edge_centroid(data, img_data, padding=20):
-    # With Gaussian Blur might achieve the best performance
-    try:
-        start, end = edge_preprocess(data, padding)
-    except AssertionError:
-        return -1
-    isums = 0
-    total = 0
-    for i in range(start, end):
-        isums += img_data[i] * i
-        total += img_data[i]
-    return isums / total if total else -1
-
-
-def centroid_seg(data, start, end):
-    """ Given a segment (start, end) of the data,
-    find the centroid. """
-    isums = 0
-    total = 0
-    start = 0 if start < 0 else start
-    end = len(data) if end > len(data) else end
-    for i in range(start, end):
-        isums += data[i] * i
-        total += data[i]
-    return isums / total if total else -1
-
-
-# POLYNOMIAL FITTING
-def poly_fitting(data, img_data, padding=20):
-    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
-    try:
-        start, end = edge_preprocess(data, padding)
-    except AssertionError:
-        return -1
-    x = np.array(range(start, end))
-    if type(img_data) == FastDataMatrix2D:
-        img_data.segmentize(start, end)
-        y = img_data.extract_array()
-    else:
-        #y = np.array(img_data[start:end])
-        idata = np.zeros(end - start)
-        for i in range(start, end):
-            idata[i - start] = img_data[i]
-    degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
-    ind = np.argmin(cost)
-    degree = degrees[ind]
-    param = params[ind]
-    degree_register(degree)
-    curve_x, curve_y = poly_curve(param, x)
-    center_id = np.argmax(curve_y)
-    return curve_x[center_id]
-
-
-def poly_fitting_params(data, img_data, padding=10):
-    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING AND THE EXTRACT_ARRAY
-    maxi, mini = max_min(data)
-    width_thres = 90
-    value_thres = 20
-    if data[maxi] < value_thres or mini - maxi > width_thres:
-        print(data[maxi], mini, maxi)
-        raise AssertionError("Bad column or row")
-    start = maxi - padding
-    end = mini + padding + 1
-    start, end = smart_interval(start, end, data)
-    if start > end:
-        try:
-            print(maxi, mini, img_data._ax, start, end)
-        except:
-            print("else", maxi, mini, start, end)
-    x = np.array(range(start, end))
-    if type(img_data) == FastDataMatrix2D:
-        img_data.segmentize(start, end)
-        y = img_data.extract_array()
-    else:
-        idata = np.zeros(end - start)
-        for i in range(start, end):
-            idata[i - start] = img_data[i]
-    degrees, params, cost = improvedCost(x, y, x, y, 1, 7)
-    ind = np.argmin(cost)
-    degree = degrees[ind]
-    param = params[ind]
-    degree_register(degree)
-    return param, x
-
-
-DEGREES = {}
-
-
-def degree_register(elem):
-    if elem in DEGREES:
-        DEGREES[elem] += 1
-    else:
-        DEGREES[elem] = 1
 
 
 def gaussian_center(data, img_data, maxi, mini, padding=20):
@@ -374,48 +160,3 @@ def gaussian_center(data, img_data, maxi, mini, padding=20):
         return -1
     return param[1]
 
-
-# GAUSSIAN FITTING
-def gaussian_fitting(data, img_data, padding=20):
-    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
-    try:
-        maxi, mini = edge_max_min(data)
-        print((mini - maxi) // 2)
-    except AssertionError:
-        return -1
-    start, end = smart_interval(maxi - padding, mini + padding + 1, data)
-    x = np.array(range(start, end))
-    if type(img_data) == FastDataMatrix2D:
-        img_data.segmentize(start, end)
-        idata = img_data.extract_array()
-    else:
-        idata = np.zeros(end-start)
-        for i in range(start, end):
-            idata[i-start] = img_data[i]
-    try:
-        param = gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, np.std(idata)])
-    except RuntimeError:
-        return -1
-    return param[1]
-
-
-def gaussian_fitting_params(data, img_data, padding=10):
-    # TODO: OPTIMIZE THE AWKWARD TYPE CHECKING, ALONG WITH THE WIDTH THRESHOLD
-    maxi, mini = max_min(data)
-    width_thres = 90
-    value_thres = 20  # TODO: CONSOLIDATE THIS VALUE
-    if data[maxi] < value_thres or mini - maxi > width_thres:
-        print(data[maxi], mini, maxi)
-        raise AssertionError("Bad column or row")
-    start = maxi - padding
-    end = mini + padding
-    start, end = smart_interval(start, end, data)
-    x = np.array(range(start, end))
-    if type(img_data) == FastDataMatrix2D:
-        img_data.segmentize(start, end)
-        idata = img_data.extract_array()
-    else:
-        idata = np.zeros(end - start)
-        for i in range(start, end):
-            idata[i-start] = img_data[i]
-    return gauss_reg(x, idata, p0=[10, (maxi + mini) / 2, np.std(idata)]), x
