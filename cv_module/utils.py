@@ -109,72 +109,13 @@ def gauss_reg(x, y, p0):
     return param
 
 
-def r2_sqe(y, yerr2):
-    ym = np.mean(y)
-    s_tot = np.sum(np.square(y-ym))
-    s_reg = np.sum(yerr2)
-    return 1 - s_reg/s_tot
-
-
-def poly_curve(params, x_input):
-    # params contains the coefficients that multiply the polynomial terms, in degree of lowest degree to highest degree
-    degree = len(params) - 1
-    x_range = [x_input[1], x_input[-1]]
-    x = np.linspace(x_range[0], x_range[1], 1000)
-    y = x * 0
-
-    for k in range(0, degree + 1):
-        coeff = params[k]
-        y = y + list(map(lambda z: coeff * z ** k, x))
-    return x, y
-
-
-def gauss_2d(x, y, a, b1, c_s1, b2, c_s2):
-    return a * np.exp(- ((x - b1) ** 2 / (2 * c_s1) + (y - b2) ** 2) / (2 * c_s2))
-
-
 def gauss_hat(x, a, b, c_s):
     return a * np.exp(- (x - b) ** 2 / (2 * c_s))
-
-
-def gaussian_curve(x_input, a, b, c_s):
-    x_range = [x_input[1], x_input[-1]]
-    x = np.linspace(x_range[0], x_range[1], 1000)
-    y = a * np.exp(- (x - b) ** 2 / (2 * c_s))
-    return x, y
-
-
-def hough_line(x, theta, rho):
-    return (rho - x * np.cos(theta)) / np.sin(theta)
 
 
 """ ===================================
 ============= GENERAL UTILS ===========
 ======================================= """
-
-
-# Generic Helper
-def max_min(data):
-    # Returns the maximum and minimum for the data
-    maxi = data[0]
-    max_ind = 0
-    mini = data[0]
-    min_ind = 0
-    for i in range(1, len(data)):
-        target = data[i]
-        if target > maxi:
-            maxi = target
-            max_ind = i
-        if target < mini:
-            mini = target
-            min_ind = i
-    return max_ind, min_ind
-
-
-def min_max(data, max, min):
-    """ Converts the data to min max space. """
-    g_diff = max - min
-    return [(d - min) / g_diff for d in data]
 
 
 def root_finding(x1, x2, y1, y2):
@@ -189,30 +130,3 @@ def check_crossing(data, i):
 def check_cross(a, b):
     # Checks whether two points are of opposite signs
     return a * b < 0
-
-
-def round_up(num):
-    down = int(num)
-    if num - down > 0:
-        return num + 1
-    else:
-        return num
-
-
-def folder_to_imgs(img_name_scheme, num_sample):
-    """This function takes img files and return cv imgs"""
-    return [cv2.imread(img_name_scheme.format(i)) for i in range(1, num_sample + 1)]
-
-
-def path_prefix_free(path, symbol='/'):
-    if path[-len(symbol):] == symbol:
-        return path[path.rfind(symbol,0, -len(symbol))+len(symbol):-len(symbol)]
-    else:
-        return path[path.rfind(symbol)+len(symbol):]
-
-
-def fname_suffix_free(fname, symbol='.'):
-    return fname[:fname.rfind(symbol)]
-
-
-
