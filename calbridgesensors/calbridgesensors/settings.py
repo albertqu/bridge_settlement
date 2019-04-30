@@ -11,22 +11,40 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+import environ
+
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False),
+    SECRET_KEY=(str, ''),
+    ALLOWED_HOSTS=(list, []),
+    DB_NAME=(str, ''),
+    DB_USER=(str, ''),
+    DB_PW=(str, ''),
+    DB_HOST=(str, ''),
+    DB_PORT=(str, ''),
+    STATIC_URL=(str, '/static/'),
+    STATIC_ROOT=(str,''),
+    DB_SQLITE=(str,'')
+)
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+environ.Env.read_env(BASE_DIR+'/calbridgesensors/cal_environment.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '&vuf$!t_6n7_z^0pfj-gdmk2k^8(^4%thu&&i-a)5=na_klw!!'
-
+# SECRET_KEY = '&vuf$!t_6n7_z^0pfj-gdmk2k^8(^4%thu&&i-a)5=na_klw!!'
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
+# ALLOWED_HOSTS = ["127.0.0.1", "192.168.15.101", "10.142.156.122", "192.168.0.12"]
 
-ALLOWED_HOSTS = ["127.0.0.1", "192.168.15.101", "10.142.156.122", "192.168.0.12"]
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -75,12 +93,39 @@ WSGI_APPLICATION = 'calbridgesensors.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME':env('DB_SQLITE'),
+#       }
+#}
+
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME':'/var/www/peer3/sqlite/db.sqlite3',
+#	}
+#}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': env('DB_NAME'),
+#         'USER': env('DB_USER'),
+#         'PASSWORD': env('DB_PW'),
+#         'HOST': env('DB_HOST'),   # Or an IP Address that your DB is hosted on
+#         'PORT': env('DB_PORT'),
+#     }
+# }
 
 
 # Password validation
@@ -119,11 +164,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'var/static/')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static/')
-]
+#STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'var/static/')
+STATIC_ROOT = env('STATIC_ROOT')
+STATIC_URL =env('STATIC_URL')
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static/')
+# ]
 STATICFILE_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder'
@@ -135,3 +182,12 @@ STATICFILE_FINDERS = [
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'sensors:index'
 LOGOUT_REDIRECT_URL = 'home'
+
+
+# EMAIL SUPPORT
+EMAIL_HOST_USER = 'albert_qu@hotmail.com'
+EMAIL_HOST_PASSWORD = "52WQY132r4"
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = "smtp.live.com"
+EMAIL_PORT = 587
+TARGET_HOST = "@tmomail.net"

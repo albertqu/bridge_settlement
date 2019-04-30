@@ -8,6 +8,8 @@ class Bridge(models.Model):
     # Field: reading
     name = models.CharField(max_length=40, primary_key=True)
     init_reading = models.OneToOneField('RawReading', on_delete=models.PROTECT, blank=True, null=True)
+    calibration = models.FloatField(blank=True, default=1)
+    number = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
         ordering = ["name"]
@@ -44,9 +46,12 @@ class Bridge(models.Model):
         """ Creates new reading, checks anomaly;
         --> Raises Broken Flag if showing anomaly for longer than BUFFER_TIME;
         --> Marks bridge as repaired when repaired. """
+        # TODO: DETERMINE SETTLEMENT RELATIONS
         new_reading = self.rawreading_set.create(x=float(data['x']), y=float(data['y']), z=float(data['z']),
                                               theta=float(data['theta']), phi=float(data['phi']),
                                               psi=float(data['psi']), target=self)
+        if self.init_reading is None:
+            self.init_reading = new_reading
         latest = new_reading.create_reading()
         self.update_routine(latest)
 
@@ -75,6 +80,7 @@ class Bridge(models.Model):
         self.bridgelog_set.create(log_type='R', bridge=self)
         if self.is_broken():
             self.brokenflag.delete()
+            self.init_reading = None
 
     def mark_broken(self, damage_rec):
         BrokenFlag.objects.create(bridge=self, damage_record=damage_rec)
@@ -143,6 +149,9 @@ class Reading(models.Model):
         return max_val(self.x, self.y, self.z) > THRESHOLD_DIS \
                or max_val(self.theta, self.phi, self.psi) > THRESHOLD_ROT
 
+    def get_errors(self):
+        return self.base.error_set.all()
+
 
 class BridgeLog(models.Model):
     DAMAGE = "D"
@@ -178,3 +187,13 @@ class BrokenFlag(models.Model):
 
     def broken_time(self):
         return self.damage_record.time_elapsed()
+
+
+class ErrorStatus(models.Model):
+    code = models.IntegerField(primary_key=True)
+    sources = models.ManyToManyField(RawReading)
+
+    class Meta:
+        verbose_name = "Error Status Code"
+        ordering = ["code"]
+
