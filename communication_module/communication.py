@@ -1,8 +1,5 @@
 import requests
-from requests import Session
-import json
 from datetime import datetime
-from dateutil import parser
 from random import randint
 
 BRIDGE_NAME = 'dummy'
