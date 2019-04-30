@@ -19,3 +19,8 @@ This is the bridge settlement project development repository.
             - SOME IMAGE FOLDERS 
             - e.g. calib4 (where all the hough goes)
     - git_repo
+    
+## Branch Structure
+- All changes for deployment goes to deploy branch
+- All changes for server stuff goes to master finally
+- Historical development kept in albert-cv-v0
