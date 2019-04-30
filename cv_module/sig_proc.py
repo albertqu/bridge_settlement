@@ -9,6 +9,7 @@ from img_proc import image_diff
 ============== CENTER DETECT===============
 =========================================== """
 
+
 def center_detect(img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', norm=True, invar=True):
     """This function takes in a list of images and output x, y [pixel] coordinates of the center of the cross hair
     hs: HORIZONTAL SLICE!  vs: VERTICAL SLICE!
