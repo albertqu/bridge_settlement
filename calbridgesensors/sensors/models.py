@@ -8,7 +8,7 @@ class Bridge(models.Model):
     # Field: reading
     name = models.CharField(max_length=40, primary_key=True)
     init_reading = models.OneToOneField('RawReading', on_delete=models.PROTECT, blank=True, null=True)
-    calibration = models.FloatField(blank=True, default=1)
+    calibration = models.DecimalField(max_digits=10, decimal_places=4, blank=True, default=1.0)
     number = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
@@ -47,17 +47,20 @@ class Bridge(models.Model):
         --> Raises Broken Flag if showing anomaly for longer than BUFFER_TIME;
         --> Marks bridge as repaired when repaired. """
         # TODO: DETERMINE SETTLEMENT RELATIONS
-        errors = eval(data['errors']) if data['errors'] else []
-        print(errors)
-        f = lambda x: eval(x) if eval(x) else 0.0
-        new_reading = self.rawreading_set.create(x=f(data['x']), y=f(data['y']),
-                                                 z=f(data['z']),
-                                              theta=f(data['theta']), phi=f(data['phi']),
-                                              psi=f(data['psi']), target=self, counter=int(data['counter']))
-        if self.init_reading is None:
-            self.init_reading = new_reading
-        latest = new_reading.create_reading()
-        self.update_routine(latest)
+        x, y, z, theta, phi, psi, counter = eval(data['x']), eval(data['y']), eval(data['z']), eval(data['theta']), \
+                                            eval(data['phi']), eval(data['psi']), int(data['counter'])
+        errors = [eval(e) for e in data['errors'].split(',')] if data['errors'] else []
+        targets = self.rawreading_set.filter(counter=counter)
+        if len(targets) > 0:
+            targets[0].add_errors(errors)
+        else:
+            new_reading = self.rawreading_set.create(x=x, y=y, z=z, theta=theta, phi=phi, psi=psi, target=self,
+                                                     counter=counter)
+
+            if self.init_reading is None and new_reading.is_error_free():
+                self.init_reading = new_reading
+            latest = new_reading.create_reading()
+            self.update_routine(latest)
 
     def update_routine(self, new_reading):
         if new_reading.shows_anomaly():
@@ -101,12 +104,12 @@ class Bridge(models.Model):
 
 class RawReading(models.Model):
     # TODO: ADD ABILITY TO RECALIBRATE FOR ALL READINGS
-    x = models.DecimalField(max_digits=6, decimal_places=2)
-    y = models.DecimalField(max_digits=6, decimal_places=2)
-    z = models.DecimalField(max_digits=6, decimal_places=2)
-    theta = models.DecimalField(max_digits=6, decimal_places=2)
-    phi = models.DecimalField(max_digits=6, decimal_places=2)
-    psi = models.DecimalField(max_digits=6, decimal_places=2)
+    x = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    y = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    z = models.DecimalField(max_digits=6, decimal_places=2,null=True)
+    theta = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    phi = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    psi = models.DecimalField(max_digits=6, decimal_places=2, null=True)
     target = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
     counter = models.IntegerField(default=-1)
@@ -119,27 +122,48 @@ class RawReading(models.Model):
         return "Raw Reading for " + self.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
-        return self.get_reading().shows_anomaly()
+        return self.get_reading().shows_anomaly() and not self.disp_valid()
 
     def create_reading(self):
         ix, iy, iz, it, iph, ips = self.target.init_reading.x, self.target.init_reading.y, \
                                    self.target.init_reading.z, self.target.init_reading.theta, \
                                    self.target.init_reading.phi, self.target.init_reading.psi
-        return self.reading_set.create(x=self.x - ix, y=self.y - iy, z=self.z - iz, theta=self.theta - it,
-                                       phi=self.phi - iph, psi=self.psi - ips, base=self)
+        if self.disp_valid():
+            dx, dy, dz = self.x - ix, self.y - iy, self.z - iz
+        else:
+            dx, dy, dz = None, None, self.z - iz
+        return self.reading_set.create(x=dx, y=dy, z=dz, theta=self.theta - it if self.theta is not None else None,
+                                       phi=self.phi - iph if self.phi is not None else None,
+                                       psi=self.psi - ips if self.psi is not None else None, base=self)
 
     def get_reading(self):
         return self.reading_set.all()[0]
 
+    def disp_valid(self):
+        return self.x is not None and self.y is not None and self.z is not None \
+               and self.x >=0 and self.y >=0 and self.z >= 0
+
+    def is_error_free(self):
+        return self.disp_valid() and self.phi is not None and self.theta is not None and self.psi is not None
+
+    def add_errors(self, errors):
+        for e in errors:
+            try:
+                err = ErrorStatus.objects.get(pk=e)
+            except:
+                err = ErrorStatus.objects.create(code=e, status="")
+            self.errorstatus_set.add(err)
+
+
 
 class Reading(models.Model):
     # TODO: ADD ABILITY TO RECALIBRATE FOR ALL READINGS
-    x = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
-    y = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
-    z = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
-    theta = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
-    phi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
-    psi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    x = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    y = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    z = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    theta = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    phi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    psi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
     base = models.ForeignKey('RawReading', on_delete=models.PROTECT, null=True, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
@@ -205,6 +229,8 @@ class ErrorStatus(models.Model):
 
     def __str__(self):
         return "Code {}, {}".format(self.code, self.status)
+
+
 
 
 def load_error_status():

@@ -32,8 +32,28 @@ class SensorsHomeView(LoginRequiredMixin, TemplateView):
 @login_required(login_url='/accounts/login/')
 def bridge_view(request, pk):
     bridge = get_object_or_404(Bridge, pk=pk)
-    readings = bridge.rawreading_set.all()
-    len_reading = len(readings)
+    rawreadings = bridge.rawreading_set.all()
+    len_reading = len(rawreadings)
+
+    calibrateddp = [(0.0, 0.0, None)] * len_reading
+    calibratedx = [0.0] * len_reading
+    calibratedy = [0.0] * len_reading
+    thetas = [0.0] * len_reading
+    phis = [0.0] * len_reading
+    #dates = [None] * len_reading
+    for i in range(len_reading):
+        curr = rawreadings[i]
+        dcurr = rawreadings[i].get_reading()
+        dx = dcurr.x
+        dy = dcurr.y
+        dt = curr.time_taken
+        calibrateddp[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
+        calibratedx[i] = dx
+        calibratedy[i] = dy
+        thetas[i] = dcurr.theta
+        phis[i] = dcurr.phi
+    calib_json = json.dumps(calibrateddp)
+    """len_reading = len(readings)
     if len_reading:
         ground_zero = readings[len_reading - 1]
         ground_zero_x = ground_zero.x
@@ -48,15 +68,13 @@ def bridge_view(request, pk):
     dates = [None] * len_reading
     for i in range(len_reading):
         curr = readings[i]
-        dx = decimal_rep(calib_dp_to_di(curr.x - ground_zero_x))
-        dy = decimal_rep(calib_dp_to_di(curr.y - ground_zero_y))
+        dx = decimal_rep(calib_dp_to_di(bridge, curr.x - ground_zero_x))
+        dy = decimal_rep(calib_dp_to_di(bridge, curr.y - ground_zero_y))
         dt = curr.time_taken
         calibrated[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
         calibratedx[i] = dx
         calibratedy[i] = dy
-    calib_json = json.dumps(calibrated)
-    #print(calibrated[-10:])
-    #json_readings = json.dumps(readings)
+    calib_json = json.dumps(calibrated)"""
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),

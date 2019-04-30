@@ -1,5 +1,5 @@
 import re
-from .apps import CONNECTION_PASSWORD, CALIB_VAL
+from .apps import CONNECTION_PASSWORD
 from dateutil import parser
 from datetime import datetime
 
@@ -49,8 +49,8 @@ def succinct_time_str(dt):
     return str(dt)[:19]
 
 
-def calib_dp_to_di(dp):
-    return dp / CALIB_VAL
+def calib_dp_to_di(bridge, dp):
+    return dp / bridge.calibration
 
 
 def decimal_rep(n):
