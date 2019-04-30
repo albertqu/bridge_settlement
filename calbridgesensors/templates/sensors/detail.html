@@ -6,6 +6,8 @@
             <li class="setview">Bridge Name</li>
             <li class="setview">Bridge reading x</li>
             <li class="setview">Bridge reading y</li>
+            <li class="setview">Pitch Camera</li>
+            <li class="setview">Pitch Laser</li>
             <li class="setview">Broken Record</li>
             <li class="setview">Repair Record</li>
         </ul>
@@ -37,6 +39,32 @@
                         </div>
                     {% else %}
                         <li class="dropitem">{{ ry }}</li>
+                    {% endif %}
+                {% endfor %}
+                </div>
+                <div class="dropdown">
+                {% for t in thetas %}
+                    {% if forloop.first %}
+                        <button class="setview dropbtn">{{ t }}</button>
+                        <div class="dropmenu">
+                    {% elif forloop.last %}
+                        <li class="dropitem">{{ t }}</li>
+                        </div>
+                    {% else %}
+                        <li class="dropitem">{{ t }}</li>
+                    {% endif %}
+                {% endfor %}
+                </div>
+                <div class="dropdown">
+                {% for p in phis %}
+                    {% if forloop.first %}
+                        <button class="setview dropbtn">{{ p }}</button>
+                        <div class="dropmenu">
+                    {% elif forloop.last %}
+                        <li class="dropitem">{{ p }}</li>
+                        </div>
+                    {% else %}
+                        <li class="dropitem">{{ p }}</li>
                     {% endif %}
                 {% endfor %}
                 </div>

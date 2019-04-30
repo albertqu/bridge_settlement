@@ -1,7 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.views.generic import DetailView
 from django.http import HttpResponse
 from django.views.generic.base import TemplateView
 from .models import Bridge, BrokenFlag, Reading
@@ -44,6 +43,8 @@ def bridge_view(request, pk):
     calibrated = [(0.0, 0.0, None)] * len_reading
     calibratedx = [0.0] * len_reading
     calibratedy = [0.0] * len_reading
+    thetas = [0.0] * len_reading
+    phis = [0.0] * len_reading
     dates = [None] * len_reading
     for i in range(len_reading):
         curr = readings[i]
@@ -63,7 +64,9 @@ def bridge_view(request, pk):
                "reading": bridge.latest_reading(),
                "readings": calib_json,
                "readingsx": calibratedx,
-               "readingsy": calibratedy
+               "readingsy": calibratedy,
+               "thetas": thetas,
+               "phis": phis
                }
     return render(request, "sensors/detail.html", context=context)
 

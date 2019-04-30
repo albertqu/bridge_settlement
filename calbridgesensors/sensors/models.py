@@ -47,9 +47,13 @@ class Bridge(models.Model):
         --> Raises Broken Flag if showing anomaly for longer than BUFFER_TIME;
         --> Marks bridge as repaired when repaired. """
         # TODO: DETERMINE SETTLEMENT RELATIONS
-        new_reading = self.rawreading_set.create(x=float(data['x']), y=float(data['y']), z=float(data['z']),
-                                              theta=float(data['theta']), phi=float(data['phi']),
-                                              psi=float(data['psi']), target=self)
+        errors = eval(data['errors']) if data['errors'] else []
+        print(errors)
+        f = lambda x: eval(x) if eval(x) else 0.0
+        new_reading = self.rawreading_set.create(x=f(data['x']), y=f(data['y']),
+                                                 z=f(data['z']),
+                                              theta=f(data['theta']), phi=f(data['phi']),
+                                              psi=f(data['psi']), target=self, counter=int(data['counter']))
         if self.init_reading is None:
             self.init_reading = new_reading
         latest = new_reading.create_reading()
@@ -97,21 +101,22 @@ class Bridge(models.Model):
 
 class RawReading(models.Model):
     # TODO: ADD ABILITY TO RECALIBRATE FOR ALL READINGS
-    x = models.DecimalField(max_digits=4, decimal_places=2)
-    y = models.DecimalField(max_digits=4, decimal_places=2)
-    z = models.DecimalField(max_digits=4, decimal_places=2)
-    theta = models.DecimalField(max_digits=4, decimal_places=2)
-    phi = models.DecimalField(max_digits=4, decimal_places=2)
-    psi = models.DecimalField(max_digits=4, decimal_places=2)
+    x = models.DecimalField(max_digits=6, decimal_places=2)
+    y = models.DecimalField(max_digits=6, decimal_places=2)
+    z = models.DecimalField(max_digits=6, decimal_places=2)
+    theta = models.DecimalField(max_digits=6, decimal_places=2)
+    phi = models.DecimalField(max_digits=6, decimal_places=2)
+    psi = models.DecimalField(max_digits=6, decimal_places=2)
     target = models.ForeignKey(Bridge, on_delete=models.CASCADE, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
+    counter = models.IntegerField(default=-1)
 
     class Meta:
         verbose_name = "Bridge Sensor Raw Reading"
-        ordering = ["bridge__name", "-time_taken"]
+        ordering = ["target__name", "-time_taken"]
 
     def __str__(self):
-        return "Raw Reading for " + self.bridge.name + " at " + succinct_time_str(self.time_taken)
+        return "Raw Reading for " + self.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
         return self.get_reading().shows_anomaly()
@@ -129,21 +134,21 @@ class RawReading(models.Model):
 
 class Reading(models.Model):
     # TODO: ADD ABILITY TO RECALIBRATE FOR ALL READINGS
-    x = models.DecimalField(max_digits=4, decimal_places=2)
-    y = models.DecimalField(max_digits=4, decimal_places=2)
-    z = models.DecimalField(max_digits=4, decimal_places=2)
-    theta = models.DecimalField(max_digits=4, decimal_places=2)
-    phi = models.DecimalField(max_digits=4, decimal_places=2)
-    psi = models.DecimalField(max_digits=4, decimal_places=2)
+    x = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    y = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    z = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    theta = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    phi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
+    psi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0)
     base = models.ForeignKey('RawReading', on_delete=models.PROTECT, null=True, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Bridge Sensor Reading"
-        ordering = ["base__bridge__name", "-time_taken"]
+        ordering = ["base__target__name", "-time_taken"]
 
     def __str__(self):
-        return "Reading for " + self.bridge.name + " at " + succinct_time_str(self.time_taken)
+        return "Reading for " + self.base.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
         return max_val(self.x, self.y, self.z) > THRESHOLD_DIS \
@@ -191,9 +196,27 @@ class BrokenFlag(models.Model):
 
 class ErrorStatus(models.Model):
     code = models.IntegerField(primary_key=True)
-    sources = models.ManyToManyField(RawReading)
+    status = models.CharField(max_length=80, default="")
+    sources = models.ManyToManyField(RawReading, blank=True)
 
     class Meta:
         verbose_name = "Error Status Code"
         ordering = ["code"]
+
+    def __str__(self):
+        return "Code {}, {}".format(self.code, self.status)
+
+
+def load_error_status():
+    fl = r"/Users/albertqu/Documents/7.Research/PEER Research/Errors.txt"
+    with open(fl, 'r') as f:
+        for line in f.readlines():
+            if line.count(":") == 2:
+                line = line.strip("\n")
+                tg = line.find(":")
+                print(line[:tg], line[tg + 2:])
+                code, status = int(line[:tg]), line[tg+2:]
+                if len(ErrorStatus.objects.filter(pk=code)) == 0:
+                    print("Error status {}-{} created".format(code, status))
+                    ErrorStatus.objects.create(code=code, status=status)
 

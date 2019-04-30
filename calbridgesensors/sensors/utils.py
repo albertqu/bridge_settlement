@@ -1,5 +1,4 @@
 import re
-import json
 from .apps import CONNECTION_PASSWORD, CALIB_VAL
 from dateutil import parser
 from datetime import datetime
@@ -66,6 +65,8 @@ def parse_db_time_string(time_string):
 def parse_db_time(db_time):
     date = datetime.strftime(db_time, '%Y-%m-%d %H:%M:%S')
     return date
+
+
 
 
 
