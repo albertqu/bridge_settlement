@@ -3,7 +3,7 @@ from datetime import datetime
 from random import randint
 
 BRIDGE_NAME = 'dummy'
-dest = "http://apps2.peer.berkeley.edu/caltrans/sensors/"+BRIDGE_NAME+"/update/"
+SERVER = "http://apps2.peer.berkeley.edu/caltrans/sensors/"+BRIDGE_NAME+"/update/"
 PASSWORD = "djioewfj34jod2jdoi3jr0jl983jsa"
 
 
@@ -11,7 +11,7 @@ def send_data_to_server(x=0.0, y=0.0, z=0.0, theta=0.0, phi=0.0, psi=0.0, errors
     payload = {'x': x, 'y': y, 'z': z, 'theta': theta, 'phi': phi, 'psi': psi, 'errors': errors, 'counter': counter}
     dt = datetime.now()
     cookies = {'csrftoken': encode(dt), 'time': str(dt)}
-    r = requests.post(dest, data=payload, cookies=cookies)
+    r = requests.post(SERVER, data=payload, cookies=cookies)
     if r.status_code == 403:
         raise RuntimeWarning("CSRF ALERT ON, INSPECT YOUR SYSTEM")
     elif r.status_code != 200:
