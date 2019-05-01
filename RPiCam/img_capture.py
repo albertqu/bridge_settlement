@@ -3,10 +3,9 @@ import os
 from fractions import Fraction
 import time
 
-
 class ImgCollector:
 
-    def __init__(self, dir='', ns='img', ext='png', raw=False, ss=3000000, iso=100, num=2, serialize=True):
+    def __init__(self, dir='', ns='img', ext='png', raw=False, ss=3000000, iso=100, num=2, serialize=True, buffer=10):
         """ Constructor for ImgCollector
         NOTE: Currently ImgCollector only works in Linux/Linux-like system
         :param dir: directory for putting images, as well as the log file if serialize is True (_dir)
@@ -17,6 +16,7 @@ class ImgCollector:
         :param iso: iso value for camera (iso)
         :param num: total number of pictures in a sequence (_num)
         :param serialize: Whether logging counter to a text file. (ser)
+        :param buffer: Number of img sequence kept in directories.
 
         Instance variable:
             logfile: path of the logfile if serialize is True
@@ -41,6 +41,7 @@ class ImgCollector:
         self.ser = serialize
         self.cam = None
         self.curr = 0
+        self.buffer = buffer
         self.init_cam()
         if serialize:
             self.logfile = self._dir + "img_log.txt"
@@ -92,10 +93,8 @@ class ImgCollector:
         self.cam.awb_gains = (Fraction(63, 128), Fraction(93, 64))
 
     def get_last_meas(self):
-        if self._num == 1:
-            return self.name_scheme.format(self.counter - 1)
-        else:
-            return self._dir + self._ns + '_%d_{0}.' % (self.counter - 1) + self._ext
+        # Gets the previous measurement (self.counter-1)
+        return self.name_scheme.format("%d_{}" % (self.counter - 1))
 
     def shutdown(self):
         self.cam.framerate = Fraction(1, 1)
@@ -106,13 +105,23 @@ class ImgCollector:
             wfile.write(str(self.counter))
             wfile.close()
 
+    def clean_dir(self, silent=False):
+        # Cleans Img Sequence that is self.buffer iterations ago
+        if self.counter > self.buffer:
+            to_clean = self.name_scheme.format("%d_{}" % (self.counter - self.buffer))
+            for i in range(self._num):
+                iclean = to_clean.format(i)
+                if os.path.exists(iclean):
+                    os.remove(iclean)
+            if not silent:
+                print("Cleaned the {}th iteration".format(self.counter-self.buffer))
+        else:
+            if not silent:
+                print("Still Within Buffer. No Cleaning Is Done")
+
     def capture(self):
         self.cam.capture(self.name_scheme.format("%d_%d" % (self.counter, self.curr)), bayer=self._raw)
         self.curr += 1
         if self.curr == self._num:
             self.counter += 1
             self.curr = 0
-
-
-if __name__ == "__main__":
-    recur = True

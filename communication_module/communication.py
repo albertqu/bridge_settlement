@@ -14,6 +14,8 @@ def send_data_to_server(x=0.0, y=0.0, z=0.0, theta=0.0, phi=0.0, psi=0.0, errors
     r = requests.post(dest, data=payload, cookies=cookies)
     if r.status_code == 403:
         raise RuntimeWarning("CSRF ALERT ON, INSPECT YOUR SYSTEM")
+    elif r.status_code != 200:
+        raise RuntimeWarning("Server Error, Code: {}".format(r.status_code))
     else:
         return r.text
 
