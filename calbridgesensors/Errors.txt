@@ -1,0 +1,67 @@
+0: No error, completed execution
+1-10: Sensor/GPIO Related
+11-25: Communication Related
+26-30: Image Algorithm Related
+31+: Other
+
+1: Pre-INIT_0: GPIO Pin Error
+11: INIT_1: No Connection to RPI_L
+31: Pre-INIT_0: Run File Error
+32: INIT_1: General Error
+33: Image_I_Comm: General Error
+2: Image_I: Camera Malfunction
+12: Image_I_Comm: Wrong Ack from RPI_L
+13: Image_I_Comm: No msg received from RPI_L
+3: Image_II: Camera Malfunction
+34: L_Accel: General Error
+14: L_Accel: No msg received from RPI_L
+15: L_Accel: pitch_L data type error suspected
+35: L_Accel: pitch_L received not numeric
+4: C_Accel: Accelerometer Malfunction
+26: Process: Image Processing Error
+16: Server: Runtime Warning: Value not pushed to server
+17: Server: Value not pushed to server
+18: Server: No active connection & FONA not put to sleep
+36: Server: Active connection made but FONA not put to sleep
+19: Server: No active connection & FONA put to sleep
+21: Server: SMS messages on FONA could not be deleted
+20: INIT_0: Could not initialize dongle
+5: Server: Battery pin reading error
+6: Server: Battery pin GPIO error
+37: L_Accel: Cannot set event to kill BLE threads
+
+
+Example error code sequences:
+
+unplugged accel & FONA
+unplugged FONA
+RPI_L unplugged & unplugged FONA
+RPI_L unplugged during first photo & unplugged FONA
+unplugged FONA
+RPI_L unplugged during second photo & unplugged FONA
+RPI_L has unplugged accelerometer & unplugged FONA
+unplugged FONA
+match with outputs:
+
+0,1,2,None,17.2557430000,4,18
+1,1,2,0.327253738789,17.1295340000,18
+2,None,None,None,None,11
+3,None,None,None,None,13
+4,1,2,0.326877493335,11.0077240000,18
+5,1,2,0.323774445807,None,14,18
+6,1,2,0.330329407426,None,14,18
+7,1,2,0.332966050035,11.0066180000,18
+
+Then, we plug in the FONA:
+data_log.txt cleared
+
+Then we unplug the fona and move the RPI_L far away:
+
+9,None,None,None,None,11
+10,None,None,None,None,11
+11,1,2,0.338712969875,11.0003760000,18
+
+run 9 and 10 could not connect. run 11 did.
+
+Then we plug in the FONA
+data_log.txt cleared
