@@ -47,12 +47,17 @@ class Bridge(models.Model):
         --> Raises Broken Flag if showing anomaly for longer than BUFFER_TIME;
         --> Marks bridge as repaired when repaired. """
         # TODO: DETERMINE SETTLEMENT RELATIONS
-        x, y, z, theta, phi, psi, counter = eval(data['x']), eval(data['y']), eval(data['z']), eval(data['theta']), \
-                                            eval(data['phi']), eval(data['psi']), int(data['counter'])
-        errors = [eval(e) for e in data['errors'].split(',')] if data['errors'] else []
+        # ASSUMPTION: QueryDict here contains all the fields as strings
+        f = lambda field: eval(data[field]) if field in data else None
+        x, y, z, theta, phi, psi, counter = f('x'), f('y'), f('z'), f('theta'), f('phi'), f('psi'), f('counter')
+        if counter is None:
+            raise RuntimeError("Counter has to be set")
+        errors = [eval(e) for e in data['errors'].split(',')] if 'errors' in data and data['errors'] else []
         targets = self.rawreading_set.filter(counter=counter)
         if len(targets) > 0:
             targets[0].add_errors(errors)
+            if len(targets) > 1:
+                raise RuntimeWarning("Multiple instances with the same counter is present!")
         else:
             new_reading = self.rawreading_set.create(x=x, y=y, z=z, theta=theta, phi=phi, psi=psi, target=self,
                                                      counter=counter)
@@ -99,7 +104,7 @@ class Bridge(models.Model):
     def check_buffer(self):
         latest_damage = self.get_damage_records()[0]
         return latest_damage.time_elapsed() >= BUFFER_TIME \
-               or len(self.rawreading_set.filter(time_taken__gte=latest_damage.logtime)) >= BUFFER_MEAS
+               or len(self.rawreading_set.filter(time_taken__gte=latest_damage.log_time)) >= BUFFER_MEAS
 
 
 class RawReading(models.Model):
@@ -122,25 +127,35 @@ class RawReading(models.Model):
         return "Raw Reading for " + self.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
-        return not self.disp_valid() or self.get_reading().shows_anomaly()
+        print(self.is_error_free())
+        return not self.is_error_free() or self.get_reading().shows_anomaly()
 
     def create_reading(self):
-        if self.target.init_reading is None:
-            return self.reading_set.create(x=self.x, y=self.y, z=self.z,
-                                           theta=self.theta, phi=self.phi, psi=self.psi, base=self)
-        ix, iy, iz, it, iph, ips = self.target.init_reading.x, self.target.init_reading.y, \
-                                   self.target.init_reading.z, self.target.init_reading.theta, \
-                                   self.target.init_reading.phi, self.target.init_reading.psi
-        if self.disp_valid():
-            dx, dy, dz = self.x - ix, self.y - iy, self.z - iz
-        else:
-            dx, dy, dz = None, None, self.z - iz
-        return self.reading_set.create(x=dx, y=dy, z=dz, theta=self.theta - it if self.theta is not None else None,
-                                       phi=self.phi - iph if self.phi is not None else None,
-                                       psi=self.psi - ips if self.psi is not None else None, base=self)
+        try:
+            if self.target.init_reading is None:
+                return self.reading_set.create(x=self.x if self.x != -1 else None,
+                                               y=self.y if self.y != -1 else None,
+                                               z=self.z if self.z != -1 else None,
+                                               theta=self.theta, phi=self.phi, psi=self.psi, base=self)
+            ix, iy, iz, it, iph, ips = self.target.init_reading.x, self.target.init_reading.y, \
+                                       self.target.init_reading.z, self.target.init_reading.theta, \
+                                       self.target.init_reading.phi, self.target.init_reading.psi
+            if self.disp_valid():
+                dx, dy, dz = self.x - ix, self.y - iy, self.z - iz
+            else:
+                dx, dy, dz = None, None, self.z - iz  # Z is not used here, might be added later
+            g = lambda v, iv: (v - iv) if v is not None else None
+            dtheta, dphi, dpsi = g(self.theta, it), g(self.phi, iph), g(self.psi, ips)
+            return self.reading_set.create(x=dx, y=dy, z=dz, theta=dtheta, phi=dphi, psi=dpsi, base=self)
+        except:
+            return self.reading_set.create(base=self)
 
     def get_reading(self):
-        return self.reading_set.latest('time_taken')
+        rmanager = self.reading_set
+        if len(rmanager.all()) == 0:
+            return self.create_reading()
+        else:
+            return self.reading_set.latest('time_taken')
 
     def disp_valid(self):
         return self.x is not None and self.y is not None and self.z is not None \
@@ -161,12 +176,12 @@ class RawReading(models.Model):
 
 class Reading(models.Model):
     # TODO: ADD ABILITY TO RECALIBRATE FOR ALL READINGS
-    x = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
-    y = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
-    z = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
-    theta = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
-    phi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
-    psi = models.DecimalField(max_digits=4, decimal_places=2, blank=True, default=0.0, null=True)
+    x = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    y = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    z = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    theta = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    phi = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    psi = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     base = models.ForeignKey('RawReading', on_delete=models.PROTECT, null=True, unique_for_date="time_taken")
     time_taken = models.DateTimeField(auto_now_add=True)
 
@@ -178,8 +193,12 @@ class Reading(models.Model):
         return "Reading for " + self.base.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
-        return max_val(self.x, self.y, self.z) > THRESHOLD_DIS \
+        return self.has_invalid() or max_val(self.x, self.y, self.z) > THRESHOLD_DIS \
                or max_val(self.theta, self.phi, self.psi) > THRESHOLD_ROT
+
+    def has_invalid(self):
+        return self.x is None or self.y is None or self.z is None \
+               or self.theta is None or self.phi is None or self.psi is None
 
     def get_errors(self):
         return self.base.error_set.all()
@@ -234,18 +253,4 @@ class ErrorStatus(models.Model):
         return "Code {}, {}".format(self.code, self.status)
 
 
-
-
-def load_error_status():
-    fl = r"/Users/albertqu/Documents/7.Research/PEER Research/Errors.txt"
-    with open(fl, 'r') as f:
-        for line in f.readlines():
-            if line.count(":") == 2:
-                line = line.strip("\n")
-                tg = line.find(":")
-                print(line[:tg], line[tg + 2:])
-                code, status = int(line[:tg]), line[tg+2:]
-                if len(ErrorStatus.objects.filter(pk=code)) == 0:
-                    print("Error status {}-{} created".format(code, status))
-                    ErrorStatus.objects.create(code=code, status=status)
 

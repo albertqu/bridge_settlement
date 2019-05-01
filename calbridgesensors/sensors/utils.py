@@ -50,11 +50,11 @@ def succinct_time_str(dt):
 
 
 def calib_dp_to_di(bridge, dp):
-    return dp / bridge.calibration
+    return dp / bridge.calibration if dp is not None else None
 
 
 def decimal_rep(n):
-    return "%.4f" % n
+    return "%.4f" % n if n is not None else None
 
 
 def parse_db_time_string(time_string):

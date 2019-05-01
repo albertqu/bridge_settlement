@@ -41,40 +41,19 @@ def bridge_view(request, pk):
     thetas = [0.0] * len_reading
     phis = [0.0] * len_reading
     #dates = [None] * len_reading
+    print(rawreadings[0].time_taken, rawreadings[len_reading-1].time_taken)
     for i in range(len_reading):
         curr = rawreadings[i]
         dcurr = rawreadings[i].get_reading()
-        dx = decimal_rep(calib_dp_to_di(bridge, dcurr.x))
-        dy = decimal_rep(calib_dp_to_di(bridge, dcurr.y))
+        dx = decimal_rep(calib_dp_to_di(bridge, dcurr.x)) if dcurr.x is not None else None
+        dy = decimal_rep(calib_dp_to_di(bridge, dcurr.y)) if dcurr.y is not None else None
         dt = curr.time_taken
         calibrateddp[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
-        calibratedx[i] = dx
+        calibratedx[i] = dx  # First entry would be newest
         calibratedy[i] = dy
         thetas[i] = decimal_rep(dcurr.theta)
         phis[i] = decimal_rep(dcurr.phi)
     calib_json = json.dumps(calibrateddp)
-    """len_reading = len(readings)
-    if len_reading:
-        ground_zero = readings[len_reading - 1]
-        ground_zero_x = ground_zero.x
-        ground_zero_y = ground_zero.y
-    else:
-        ground_zero_x, ground_zero_y = 0, 0
-    calibrated = [(0.0, 0.0, None)] * len_reading
-    calibratedx = [0.0] * len_reading
-    calibratedy = [0.0] * len_reading
-    thetas = [0.0] * len_reading
-    phis = [0.0] * len_reading
-    dates = [None] * len_reading
-    for i in range(len_reading):
-        curr = readings[i]
-        dx = decimal_rep(calib_dp_to_di(bridge, curr.x - ground_zero_x))
-        dy = decimal_rep(calib_dp_to_di(bridge, curr.y - ground_zero_y))
-        dt = curr.time_taken
-        calibrated[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
-        calibratedx[i] = dx
-        calibratedy[i] = dy
-    calib_json = json.dumps(calibrated)"""
     context = {"user": request.user,
                "damage_recs": bridge.get_damage_records(),
                "repair_recs": bridge.get_repair_records(),

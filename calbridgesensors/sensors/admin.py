@@ -1,10 +1,12 @@
 from django.contrib import admin
-from .models import Bridge, BridgeLog, BrokenFlag, ErrorStatus
+from .models import Bridge, BridgeLog, BrokenFlag, ErrorStatus, RawReading
 import smtplib
 from email.message import EmailMessage
 from calbridgesensors import settings
 from django.http import HttpResponse
-import csv
+import csv, zipfile
+from io import BytesIO, StringIO
+from .utils import parse_db_time, calib_dp_to_di, decimal_rep
 
 # Register your models here.
 admin.site.register(BridgeLog)
@@ -15,7 +17,7 @@ admin.site.register(ErrorStatus)
 @admin.register(Bridge)
 class BridgeAdmin(admin.ModelAdmin):
     list_display = ("name", "status")
-    actions = ["take_measurement", "mark_as_repaired","export_as_csv"] # TODO: ADD TEMPLATE VIEW OF TABLES
+    actions = ["take_measurement", "mark_as_repaired","export_reading_csvs"] # TODO: ADD TEMPLATE VIEW OF TABLES
 
     def status(self, obj):
         return "damaged" if obj.is_broken() else "healthy"
@@ -41,30 +43,40 @@ class BridgeAdmin(admin.ModelAdmin):
     # *******************************************************************************************
     # --- CITE: http://books.agiliq.com/projects/django-admin-cookbook/en/latest/export.html ----
     # *******************************************************************************************
-    def export_as_csv(self, request, queryset):
-        """https://stackoverflow.com/questions/50952823/django-response-that-contains-a-zip-file-with-multiple-csv-files
-        output = StringIO.StringIO()
-f = zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED)
-f.writestr('first.csv', '<the content of first.csv>')
-f.writestr('second.csv', '<the content of second.csv>')
-f.writestr('third.csv', '<the content of third.csv>')
-f.close()
-# Build your response
-response = HttpResponse(output.getvalue(), mimetype='application/zip')
-response['Content-Disposition'] = 'attachment; filename="yourzipfilename.zip"'
-return response"""
-        meta = self.model._meta
-        field_names = [field.name for field in meta.fields]
-
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename={}.csv'.format(meta)
-        writer = csv.writer(response)
-
-        writer.writerow(field_names)
-        for obj in queryset:
-            row = writer.writerow([getattr(obj, field) for field in field_names])
-
-        return response
+    def export_reading_csvs(self, request, queryset):
+        # https://stackoverflow.com/questions/50952823/django-response-that-contains-a-zip-file-with-multiple-csv-files
+        if len(queryset) == 0:
+            return HttpResponse(status=204)
+        else:
+            obj = queryset[0]
+            fields_names = [field.name for field in RawReading._meta.fields]
+            output = BytesIO()
+            zf = zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED)
+            for obj in queryset:
+                csvstring = StringIO()
+                cwriter = csv.writer(csvstring)
+                cwriter.writerow(['time', 'x', 'calib_x', 'y', 'calib_y', 'z', 'pitch_cam', 'pitch_laser', 'psi',
+                                  'counter', 'errors'])
+                for rr in obj.rawreading_set.all():
+                    row = [None]
+                    for f in fields_names:
+                        if f in ('id', 'target'):
+                            pass
+                        elif f in ('x', 'y'):
+                            row.append(getattr(rr, f))
+                            row.append(decimal_rep(calib_dp_to_di(obj, getattr(rr.get_reading(), f))))
+                        elif f == 'time_taken':
+                            row[0] = parse_db_time(getattr(rr, f))
+                        else:
+                            row.append(getattr(rr, f))
+                    row.append(", ".join([str(es.code) for es in rr.errorstatus_set.all()]))
+                    cwriter.writerow(row)
+                zf.writestr('{}.csv'.format(obj.name), csvstring.getvalue().encode('utf-8'))
+                csvstring.close()
+            zf.close()
+            response = HttpResponse(output.getvalue(), content_type='application/zip')
+            response['Content-Disposition'] = 'attachment; filename={}.zip'.format("readings")
+            return response
     # *******************************************************************************************
     # --------------------------------------------------------------------------------------------
     # *******************************************************************************************
