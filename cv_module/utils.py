@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.optimize import curve_fit
-import cv2
 
 """ ===================================
 ========== MATRIX-ARRAY UTIL ==========
@@ -12,7 +11,7 @@ class PseudoLL(list):
         self.append(obj)
 
     def __getitem__(self, item):
-        return super().__getitem__(len(self) - 1 - item)
+        return super(PseudoLL, self).__getitem__(len(self) - 1 - item)
 
     def __repr__(self):
         rep = '['
