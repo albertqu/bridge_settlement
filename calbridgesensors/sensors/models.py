@@ -122,9 +122,12 @@ class RawReading(models.Model):
         return "Raw Reading for " + self.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
-        return self.get_reading().shows_anomaly() and not self.disp_valid()
+        return not self.disp_valid() or self.get_reading().shows_anomaly()
 
     def create_reading(self):
+        if self.target.init_reading is None:
+            return self.reading_set.create(x=self.x, y=self.y, z=self.z,
+                                           theta=self.theta, phi=self.phi, psi=self.psi, base=self)
         ix, iy, iz, it, iph, ips = self.target.init_reading.x, self.target.init_reading.y, \
                                    self.target.init_reading.z, self.target.init_reading.theta, \
                                    self.target.init_reading.phi, self.target.init_reading.psi
@@ -137,7 +140,7 @@ class RawReading(models.Model):
                                        psi=self.psi - ips if self.psi is not None else None, base=self)
 
     def get_reading(self):
-        return self.reading_set.all()[0]
+        return self.reading_set.latest('time_taken')
 
     def disp_valid(self):
         return self.x is not None and self.y is not None and self.z is not None \
