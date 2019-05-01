@@ -2,7 +2,7 @@ from sensors.models import ErrorStatus
 
 
 def load_error_status():
-    fl = r"/Users/albertqu/Documents/7.Research/PEER Research/Errors.txt"
+    fl = r"static/Errors.txt"
     with open(fl, 'r') as f:
         for line in f.readlines():
             if line.count(":") >= 2:
