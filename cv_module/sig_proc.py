@@ -18,7 +18,7 @@ def center_detect(img_name, sample_int=30, gk=9, ks=-1, l='soft_l1', norm=True, 
     if invar:
         if isinstance(img_name, str):
             assert img_name.find('{}') != -1, "img_name should be of form [name]{} for invariance mode!"
-            ambi_n, laser_n = img_name.format(0), img_name.format(1)
+            ambi_n, laser_n = img_name.format(1), img_name.format(0)
         else:
             ambi_n, laser_n = img_name
         ambi, laser = cv2.imread(ambi_n, 0), cv2.imread(laser_n, 0)
