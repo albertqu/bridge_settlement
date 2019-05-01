@@ -44,14 +44,14 @@ def bridge_view(request, pk):
     for i in range(len_reading):
         curr = rawreadings[i]
         dcurr = rawreadings[i].get_reading()
-        dx = dcurr.x
-        dy = dcurr.y
+        dx = decimal_rep(calib_dp_to_di(bridge, dcurr.x))
+        dy = decimal_rep(calib_dp_to_di(bridge, dcurr.y))
         dt = curr.time_taken
         calibrateddp[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
         calibratedx[i] = dx
         calibratedy[i] = dy
-        thetas[i] = dcurr.theta
-        phis[i] = dcurr.phi
+        thetas[i] = decimal_rep(dcurr.theta)
+        phis[i] = decimal_rep(dcurr.phi)
     calib_json = json.dumps(calibrateddp)
     """len_reading = len(readings)
     if len_reading:
