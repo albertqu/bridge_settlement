@@ -40,8 +40,6 @@ def bridge_view(request, pk):
     calibratedy = [0.0] * len_reading
     thetas = [0.0] * len_reading
     phis = [0.0] * len_reading
-    #dates = [None] * len_reading
-    print(rawreadings[0].time_taken, rawreadings[len_reading-1].time_taken)
     for i in range(len_reading):
         curr = rawreadings[i]
         dcurr = rawreadings[i].get_reading()
