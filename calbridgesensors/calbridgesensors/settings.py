@@ -25,8 +25,14 @@ env = environ.Env(
     DB_PORT=(str, ''),
     STATIC_URL=(str, '/static/'),
     STATIC_ROOT=(str,''),
-    DB_SQLITE=(str,'')
+    DB_SQLITE=(str,''),
+    EMAIL_HOST_USER=(str,''),
+    EMAIL_HOST_PASSWORD=(str,''),
+    EMAIL_HOST=(str,''),
+    EMAIL_PORT=(str,''),
+    TARGET_HOST=(str,'')
 )
+
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -183,11 +189,10 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'sensors:index'
 LOGOUT_REDIRECT_URL = 'home'
 
-
 # EMAIL SUPPORT
-EMAIL_HOST_USER = "calbridgesensors@hotmail.com"
-EMAIL_HOST_PASSWORD = "peerbridge2019"
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 #EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = "smtp.live.com"
-EMAIL_PORT = 587
-TARGET_HOST = "@tmomail.net"
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+TARGET_HOST = env('TARGET_HOST')
