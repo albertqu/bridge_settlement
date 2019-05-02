@@ -4,6 +4,7 @@ import smtplib
 from email.message import EmailMessage
 from calbridgesensors import settings
 from django.http import HttpResponse
+from django.utils.timezone import localtime
 import csv, zipfile
 from io import BytesIO, StringIO
 from .utils import parse_db_time, calib_dp_to_di, decimal_rep
@@ -45,6 +46,8 @@ class BridgeAdmin(admin.ModelAdmin):
     # *******************************************************************************************
     def export_reading_csvs(self, request, queryset):
         # https://stackoverflow.com/questions/50952823/django-response-that-contains-a-zip-file-with-multiple-csv-files
+        import datetime
+        print(request.session.get('django_timezone'), datetime.datetime.now().tzinfo)
         if len(queryset) == 0:
             return HttpResponse(status=204)
         else:
@@ -66,7 +69,7 @@ class BridgeAdmin(admin.ModelAdmin):
                             row.append(getattr(rr, f))
                             row.append(decimal_rep(calib_dp_to_di(obj, getattr(rr.get_reading(), f))))
                         elif f == 'time_taken':
-                            row[0] = parse_db_time(getattr(rr, f))
+                            row[0] = parse_db_time(localtime(getattr(rr, f)))
                         else:
                             row.append(getattr(rr, f))
                     row.append(", ".join([str(es.code) for es in rr.errorstatus_set.all()]))

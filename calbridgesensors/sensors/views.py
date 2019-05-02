@@ -7,6 +7,7 @@ from .models import Bridge, BrokenFlag, Reading
 from .utils import verify_request, calib_dp_to_di, decimal_rep, parse_db_time
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 import json
+from django.utils.timezone import localtime
 
 
 class SensorsHomeView(LoginRequiredMixin, TemplateView):
@@ -45,7 +46,7 @@ def bridge_view(request, pk):
         dcurr = rawreadings[i].get_reading()
         dx = decimal_rep(calib_dp_to_di(bridge, dcurr.x)) if dcurr.x is not None else None
         dy = decimal_rep(calib_dp_to_di(bridge, dcurr.y)) if dcurr.y is not None else None
-        dt = curr.time_taken
+        dt = localtime(curr.time_taken)
         calibrateddp[len_reading - i - 1] = (dx, dy, parse_db_time(dt))
         calibratedx[i] = dx  # First entry would be newest
         calibratedy[i] = dy
