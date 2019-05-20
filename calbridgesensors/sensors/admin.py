@@ -18,7 +18,9 @@ admin.site.register(ErrorStatus)
 @admin.register(Bridge)
 class BridgeAdmin(admin.ModelAdmin):
     list_display = ("name", "status")
-    actions = ["take_measurement", "mark_as_repaired","export_reading_csvs"] # TODO: ADD TEMPLATE VIEW OF TABLES
+    actions = ["take_measurement", "mark_as_repaired","export_reading_csvs", "recalibrate"] # TODO: ADD TEMPLATE VIEW
+    # OF
+    # TABLES
 
     def status(self, obj):
         return "damaged" if obj.is_broken() else "healthy"
@@ -35,19 +37,42 @@ class BridgeAdmin(admin.ModelAdmin):
         print("Successfully sent")
         server.quit()
         msg = '<html lang="en"><body><script>alert("Success!");</script></body></html>'
-        return HttpResponse
+        return HttpResponse(msg)
 
     def mark_as_repaired(self, request, queryset):
         for obj in queryset:
             obj.mark_repaired()
+
+    def recalibrate(self, request, queryset):
+        # ADD alert when there is init_reading.
+        for obj in queryset:
+            repairs = obj.get_repair_records()
+            if len(repairs) == 0:
+                rawreadings = obj.rawreading_set.all()
+                for i in range(len(rawreadings)):
+                    rr = rawreadings[len(rawreadings) - 1 - i]
+                    if rr.is_error_free():
+                        obj.init_reading = rr
+                        obj.save()
+            else:
+                rawreadings = obj.rawreading_set.filter(time_taken__gte=repairs[0].log_time).order_by('-time_taken')
+                for i in range(len(rawreadings)):
+                    rr = rawreadings[len(rawreadings) - 1 - i]
+                    if rr.is_error_free():
+                        obj.init_reading = rr
+                        obj.save()
+            if obj.init_reading is not None:
+                to_calibrate = obj.rawreading_set.filter(time_taken__gte=obj.init_reading.time_taken).order_by(
+                    '-time_taken')
+                for rr in to_calibrate:
+                    rr.create_reading()
+
 
     # *******************************************************************************************
     # --- CITE: http://books.agiliq.com/projects/django-admin-cookbook/en/latest/export.html ----
     # *******************************************************************************************
     def export_reading_csvs(self, request, queryset):
         # https://stackoverflow.com/questions/50952823/django-response-that-contains-a-zip-file-with-multiple-csv-files
-        import datetime
-        print(request.session.get('django_timezone'), datetime.datetime.now().tzinfo)
         if len(queryset) == 0:
             return HttpResponse(status=204)
         else:

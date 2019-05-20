@@ -66,6 +66,7 @@ class Bridge(models.Model):
                 self.init_reading = new_reading
             latest = new_reading.create_reading()
             self.update_routine(latest)
+            self.save()
 
     def update_routine(self, new_reading):
         if new_reading.shows_anomaly():
@@ -93,6 +94,7 @@ class Bridge(models.Model):
         if self.is_broken():
             self.brokenflag.delete()
             self.init_reading = None
+            self.save()
 
     def mark_broken(self, damage_rec):
         BrokenFlag.objects.create(bridge=self, damage_record=damage_rec)
@@ -127,7 +129,6 @@ class RawReading(models.Model):
         return "Raw Reading for " + self.target.name + " at " + succinct_time_str(self.time_taken)
 
     def shows_anomaly(self):
-        print(self.is_error_free())
         return not self.is_error_free() or self.get_reading().shows_anomaly()
 
     def create_reading(self):
@@ -171,7 +172,8 @@ class RawReading(models.Model):
             except:
                 err = ErrorStatus.objects.create(code=e, status="")
             self.errorstatus_set.add(err)
-
+            err.save()
+        self.save()
 
 
 class Reading(models.Model):
