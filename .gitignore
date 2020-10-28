@@ -8,6 +8,9 @@ dataplot/
 *.bmp
 *.gif
 
+# OS
+.DS_Store
+
 # IDE file
 .idea/
 

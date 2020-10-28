@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load sensors_filters %}
+
+{% block alert %}
+    <div id="alert" class="center">
+    {% if broken_bridges %}
+        <h2>Bridge In Danger!</h2>
+        {% for bb in broken_bridges %}
+            <li class="setview"><a href="{% url "sensors:detail" bb.bridge.name|tourl %}">{{ bb.bridge }}</a></li>
+            <li class="setview" style="width: auto">Time broken: {{ bb.broken_time }}</li>
+        {% endfor %}
+    {% else %}
+        <h2 style="color: lightgreen">All Bridges Are Healthy</h2>
+    {% endif %}
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="center">
+        <label for="bselect">Choose a bridge for your query: </label>
+        <select name="bridges_select" id="bselect" onchange="window.location.assign(this.options[this.selectedIndex].value + '/')">
+            <option value="/sensors">--Select A Bridge--</option>
+            {% for b in bridges %}
+                <option value="{{ b.name|tourl }}">{{ b.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+{% endblock %}
