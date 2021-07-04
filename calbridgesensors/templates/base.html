@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <title>Cal Bridge Sensors</title>
+    <script src="{% static 'plotly.js' %}"></script>
+    <style>
+        #alert {
+            color: crimson;
+            font-family: Arial, sans-serif, Georgia, Helvetica;
+        }
+
+        div.header {
+            display: block;
+            width: 100%;
+            color: blue;
+            margin-right: 5px;
+        }
+
+        div li.right {
+            float: right;
+            border-left: 1px solid darkgrey;
+            padding: 5px 10px;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        /* ----  href clickons --- */
+        a.button:link {
+            text-decoration: none;
+        }
+
+        a.button:visited {
+            text-decoration: none;
+        }
+
+        a.button:active {
+            text-decoration: underline;
+        }
+
+        a.button:hover {
+            text-decoration: underline;
+        }
+
+        li.right a.button:hover {
+            color: dodgerblue;
+        }
+
+        li.right a.button:active {
+            color: dodgerblue;
+        }
+
+        div.center {
+            text-align: center;
+            margin-top: 5%;
+            margin-bottom: auto;
+            border-top: 1px solid slategray;
+            display: flex;
+            justify-content: center;
+        }
+
+        div.center label {
+            padding-right: 20px;
+            margin-top: 10px;
+        }
+
+        div.center select {
+            margin-top: 10px;
+        }
+
+        .dropitem {
+            float: none;
+            color: black;
+            text-decoration: none;
+            display: block;
+            padding: 10px 74px;
+            text-align: center;
+            margin: 0px 1.5% 0px 1.5%;
+        }
+
+        .dropmenu {
+            display: none;
+            position: absolute;
+            background-color: aliceblue;
+            width: 12%;
+            border-radius: 10px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            padding-left: 0px;
+            padding-right: 0px;
+        }
+
+        .dropbtn {
+            font-size: 16px;
+            outline: none;
+            color: black;
+            padding: 10px 8px;
+            background-color: aliceblue;
+            border-radius: 10px;
+            list-style: none;
+            font-family: inherit;
+            width: 133%;
+            border-color: aliceblue;
+        }
+
+        .dropdown {
+            float: left;
+            display: block;
+            margin: 3px 1% 3px 1%;
+            padding-left: 6px;
+            padding-right: 60px;
+            width: 10%;
+        }
+
+        .dropdown:hover .dropmenu {
+            display: block;
+        }
+
+        li.setview {
+            background-color: aliceblue;
+            margin: 3px 1.5% 3px 1.5%;
+            list-style: none;
+            border-radius: 10px;
+            padding: 10px 10px;
+            width: 12%;
+            height: 20px;
+            text-align: center;
+        }
+
+        .info-box {
+            display: block;
+            margin-top: 30px;
+        }
+
+        .bar {
+            display: table;
+            margin-top: 0px;
+            width: 90%;
+            margin-bottom: 0px;
+            margin-left: 40px;
+            margin-right: 40px;
+        }
+
+        .bar li {
+            float: left;
+        }
+
+        #myDiv {
+            display: block;
+            margin-top: 5%;
+        }
+
+    </style>
+</head>
+<body>
+    {% block header %}
+        <div class="header">
+            {% if user.is_authenticated %}
+                <li class="right"><a class="button" href={% url "logout" %}>logout</a></li>
+            {% endif %}
+            <li class="right"><a class="button" href="{% url "home" %}">home</a></li>
+        </div>
+    {% endblock %}
+
+
+    {% block alert %}
+    {% endblock %}
+
+
+    {% block content %}
+    {% endblock %}
+</body>
+</html>

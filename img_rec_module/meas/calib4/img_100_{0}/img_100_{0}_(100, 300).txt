@@ -1,0 +1,2 @@
+x: edge_centroid: 291.03499068467625, poly: 289.2972972972973, gaussian: 289.8408408408408; 
+y: edge_centroid: -1, poly: 0, gaussian: 0

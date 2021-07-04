@@ -1,0 +1,1 @@
+ksize:(7, 7), sigmax:0
